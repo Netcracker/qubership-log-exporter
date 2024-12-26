@@ -1,0 +1,89 @@
+apiVersion: "1.0.0.0"
+kind: cloud
+datasources:
+  graylog1:
+    host: https://example.com
+    #user: if_required
+    #password: if_required
+    tls-insecure-skip-verify: true
+    labels:
+      dbtype: graylog
+exports:
+  prometheus:
+    strategy: pull
+    port: "8083"
+  victoria:
+    strategy: push
+    consumer: victoria-vmagent #for victoria consumer may be omitted
+    host: https://example.com
+    endpoint: "/api/v1/import/prometheus"
+    tls-insecure-skip-verify: true
+metrics:
+  graylog_messages_count_total:
+    type: "counter" 
+    description: "Metric counts total number of events"
+    operation: "count"
+  graylog_messages_count_total_by_host_by_container:
+    type: "counter" 
+    description: "Metric counts total number of events"
+    labels: ["hostname"]
+    label-field-map:
+      container_name: container
+    operation: "count"
+    threads: 2
+  envoy_duration:
+    type: "histogram"
+    description: "Envoy duration"
+    labels: ["method", "service", "status", "path"]
+    label-field-map:
+      node: hostname
+      container_name: container
+    metric-value: "duration"
+    operation: "value"
+    buckets: [0, 1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000]
+    threads: 2
+queries:
+  query1:
+      metrics: ["graylog_messages_count_total", "envoy_duration", "graylog_messages_count_total_by_host_by_container"]
+      query_string: "_exists_:level AND _exists_:container_id AND container: *gateway"
+      timerange: "1m"
+      fields_in_order: ["hostname", "message", "container"]
+      croniter: '* * * * *'
+      query_lag: "1m"
+      interval: "1m"
+      enrich:
+        - source-field: message
+          regexp: '(?s).*Forward Request: .([A-Z]+) ([^ \?]+)[ \?].*Response: .([0-9])[0-9]{2} .*[^0-9]([0-9]+)ms.*' #multi-line regexp
+          threads: 2
+          dest-fields:
+            - field-name: method
+              template: "${1}"
+              default-value: "NOT_MATCHED_TO_REGEXP"
+            - field-name: path
+              template: "${2}"
+              default-value: "NOT_MATCHED_TO_REGEXP"
+              uri-processing:
+                uuid-replacer: "_UUID_"
+                id-digit-quantity: 4
+                id-replacer: "_ID_"
+                fsm-replacer-limit: 8
+                fsm-replacer: "_ID_"
+                number-replacer: "_NUMBER_"
+            - field-name: status
+              template: "${3}xx"
+              default-value: "NOT_MATCHED_TO_REGEXP"
+            - field-name: duration
+              template: "${4}"
+              default-value: "NaN"
+        - source-field: path
+          regexp: '[^ \?]*\/(v[0-9])\/[^ \?]+'
+          threads: 2
+          dest-fields:
+            - field-name: service
+              template: "${1}"
+              default-value: "UNKNOWN"
+      gts-queue-size: 14400
+      gd-queue-size: 1
+      gm-queue-size: 10
+general:
+  gm-queue-self-mon-size: 120

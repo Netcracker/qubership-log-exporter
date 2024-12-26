@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.LME_APPLICATION_NAME }}-config
+  namespace: {{ .Values.NAMESPACE }}
+  labels:
+    app.kubernetes.io/part-of: '{{ .Values.LME_APPLICATION_NAME }}'
+    app.kubernetes.io/managed-by: saasDeployer
+data:
+  allow-snippet-annotations: "false"
+  config.yaml: |
+  {{- if .Values.CONFIG_MAP }}
+    {{- toYaml (.Values.CONFIG_MAP) | nindent 4 }}
+  {{- else }}
+    apiVersion: "1.0.0.0"
+    kind: cloud
+    datasources:
+    {{- if eq "graylog" (lower .Values.LME_DATASOURCE_TYPE) }}
+      graylog1:
+      {{- if .Values.GRAYLOG_EMULATOR_ENABLED }}
+        host: http://localhost:8081
+      {{- else }}
+        host: {{ .Values.GRAYLOG_HOST | default .Values.GRAYLOG_UI_URL | default (printf "%s%s" "https://graylog-logging." .Values.CLOUD_PUBLIC_HOST) }}
+      {{- end }}
+        tls-insecure-skip-verify: true
+        labels:
+          dbtype: graylog
+    {{- else if and (eq "newrelic" (lower .Values.LME_DATASOURCE_TYPE)) (ne "" .Values.LME_NEWRELIC_URL) }}
+      newrelic:
+        type: newrelic
+        host: {{ .Values.LME_NEWRELIC_URL }}
+        tls-insecure-skip-verify: true
+        labels:
+          dbtype: newrelic
+    {{- else if and (eq "loki" (lower .Values.LME_DATASOURCE_TYPE)) (ne "" .Values.LME_LOKI_URL) }}
+      loki:
+        type: loki
+        host: {{ .Values.LME_LOKI_URL }}
+        tls-insecure-skip-verify: true
+        labels:
+          dbtype: loki
+    {{- end }}
+    exports:
+      prometheus:
+        strategy: pull
+        port: "8081"
+    {{- if eq .Values.LME_MODE "push" }}
+      {{- if eq .Values.MONITORING_TYPE "VictoriaDB" }}
+      victoria:
+        strategy: push
+        consumer: victoria-vmagent
+        host: {{ .Values.VICTORIA_HOST | default (printf "%s%s:%s" "http://vmagent-k8s." .Values.MONITORING_NAMESPACE "8429") }}
+        endpoint: "/api/v1/import/prometheus"
+        tls-insecure-skip-verify: true
+        {{- if not .Values.GRAYLOG_EMULATOR_ENABLED }}
+        last-timestamp-host:
+          host: {{ .Values.LAST_TIMESTAMP_HOST | default .Values.MONITORING_EXT_MONITORING_QUERY_URL | default (printf "%s%s:%s" "http://vmsingle-k8s." .Values.MONITORING_NAMESPACE "8429") }}
+          tls-insecure-skip-verify: true
+        {{- end }}
+      {{- else if eq .Values.MONITORING_TYPE "Prometheus" }}
+      remotewrite:
+        strategy: push
+        consumer: prometheus-remote-write
+        host: {{ .Values.PROMRW_HOST | default (printf "%s%s:%s" "http://vmagent-k8s." .Values.MONITORING_NAMESPACE "8429") }}
+        endpoint: "/api/v1/write"
+        tls-insecure-skip-verify: true
+        {{- if not .Values.GRAYLOG_EMULATOR_ENABLED }}
+        last-timestamp-host:
+          host: {{ .Values.LAST_TIMESTAMP_HOST | default .Values.MONITORING_EXT_MONITORING_QUERY_URL | default (printf "%s%s:%s" "http://vmsingle-k8s." .Values.MONITORING_NAMESPACE "8429") }}
+          tls-insecure-skip-verify: true
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    metrics:
+    {{- if .Values.CONFIG_METRICS }}
+      {{- toYaml (.Values.CONFIG_METRICS) | nindent 6 }}
+    {{- end }}
+    queries:
+    {{- if .Values.CONFIG_QUERIES }}
+      {{- toYaml (.Values.CONFIG_QUERIES) | nindent 6 }}
+    {{- end }}
+    general:
+      push-cloud-labels:
+      {{- range $k, $v := .Values.PUSH_CLOUD_LABELS }}
+        {{ $k }}: {{ $v }}
+      {{- end }}
+      last-timestamp-retry-count: "{{ .Values.LME_LTS_RETRY_COUNT }}"
+      last-timestamp-retry-period: "{{ .Values.LME_LTS_RETRY_PERIOD }}"
+      datasource-retry: {{ print .Values.LME_DATASOURCE_RETRY | default (not (eq "newrelic" (lower .Values.LME_DATASOURCE_TYPE)))}}
+      datasource-retry-period: "{{ .Values.LME_DATASOURCE_RETRY_PERIOD }}"
+      push-retry: {{ .Values.LME_PUSH_RETRY }}
+      push-retry-period: "{{ .Values.LME_PUSH_RETRY_PERIOD }}"
+    {{- if .Values.GRAYLOG_EMULATOR_ENABLED }}
+    graylog-emulator:
+      data:
+        {{- toYaml (.Values.GRAYLOG_EMULATOR_DATA) | nindent 8 }}
+    {{- end }}
+    {{- if eq .Values.LME_MODE "pull" }}
+    flags:
+      disable-timestamp: true
+    {{- end }}
+  {{- end }}

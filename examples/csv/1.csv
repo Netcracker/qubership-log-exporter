@@ -1,0 +1,9 @@
+hostname,message,container,pod,namespace,uniq_id
+host10,TEXT Forward Request:  GET /api/v1/call/117  Response:  200  113ms TEXT,container10,pod10,namespace10,1
+host10,TEXT Forward Request:  GET /api/v1/call/118  Response:  200  1ms TEXT,container10,pod10,namespace10,2
+host10,TEXT Forward Request:  GET /api/v1/call/119  Response:  200  10000ms TEXT,container10,pod10,namespace10,3
+host10,TEXT Forward Request:  GET /api/v1/call/110  Response:  200  1000ms TEXT,container10,pod11,namespace10,1
+host10,TEXT Forward Request:  PUT /api/v1/call/517  Response:  200  113ms TEXT,container10,pod11,namespace10,2
+host10,TEXT Forward Request:  PUT /api/v1/call/518  Response:  300  1ms TEXT,container10,pod10,namespace10,1
+host10,TEXT Forward Request:  DELETE /api/v1/call/519  Response:  200  10000ms TEXT,container10,pod11,namespace10,3
+host10,TEXT Forward Request:  DELETE /api/v1/call/510  Response:  200  1000ms TEXT,container10,pod11,namespace10,4

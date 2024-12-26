@@ -1,0 +1,210 @@
+datasources:
+  graylog1:
+    host: http://<ip>:<port>
+    #user: if_required
+    #password: if_required
+    #tls-insecure-skip-verify: false  # For HTTPS
+    #connection-timeout: 30s          # For HTTP & HTTPS
+    #tls-cert-file: ""                # For HTTPS
+    #tls-key-file: ""                 # For HTTPS
+    #tls-ca-cert-file: ""             # For HTTPS
+    labels:
+      dbtype: graylog
+metrics:
+  graylog_int_count:
+    type: "counter" 
+    description: "Metric counts number of events"
+    operation: "count"
+    parameters:
+      init-value: "0"
+  graylog_int_count_by_int:
+    type: "counter" 
+    description: "Metric counts number of events"
+    labels: ["integration"]
+    operation: "count"
+  graylog_int_count_by_int_by_status:
+    type: "counter" 
+    description: "Metric counts number of events"
+    labels: ["integration", "httpStatusCode"]
+    operation: "count"
+  graylog_int_duration:
+    type: "gauge"
+    description: "Average duration"
+    operation: "duration"
+    const-labels:
+        constlabel1: constvalue1
+        constlabel2: constvalue2
+    parameters:
+      time_field: "timeInMillis"
+      message_type_field: "messageType"
+      correlation_id_field: "correlationId"
+      cache: "request-cache"
+      cache-update: "true"
+      #init-value: "NaN"
+  graylog_int_duration_by_int:
+    type: "gauge"
+    description: "Average duration by integration"
+    labels: ["integration"]
+    operation: "duration"
+    parameters:
+      time_field: "timeInMillis"
+      message_type_field: "messageType"
+      correlation_id_field: "correlationId"
+      cache: "request-cache"
+  graylog_int_duration_by_int_by_status:
+    type: "gauge"
+    description: "Average duration by integration"
+    labels: ["integration", "httpStatusCode"]
+    operation: "duration"
+    parameters:
+      time_field: "Time"                        # time_field: "timestamp"
+      time_format: "02.01.2006 15:04:05.000"    # time_format: "2006-01-02T15:04:05.000Z"
+      message_type_field: "messageType"
+      message_type_request: "request"           # Default value is request. Not mandatory
+      message_type_response: "response"         # Default value is response. Not mandatory
+      correlation_id_field: "correlationId"
+      cache: "request-cache"
+      default-value: 0
+    expected-labels:
+      - integration: [int1, int2]
+        httpStatusCode: [2xx, 5xx]
+      - integration: [int3]
+        httpStatusCode: [2xx, 4xx, 5xx]
+  graylog_int_payload_size:
+    type: "gauge"
+    description: "Average payload size"
+    operation: "value"
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+    #  init-value: "NaN"
+  graylog_int_payload_size_by_int:
+    type: "gauge"
+    description: "Average payload size by integration"
+    labels: ["integration"]
+    operation: "value"
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+  graylog_int_payload_size_by_int_by_status:
+    type: "gauge"
+    description: "Average payload size by integration"
+    labels: ["integration", "httpStatusCode"]
+    operation: "value"
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+  graylog_int_payload_size_total:
+    type: "counter"
+    description: "Average payload size"
+    operation: "value"
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+    #  init-value: "NaN"
+  graylog_int_payload_size_by_int_total:
+    type: "counter"
+    description: "Average payload size by integration"
+    labels: ["integration"]
+    operation: "value"
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+  graylog_int_payload_size_by_int_by_status_total:
+    type: "counter"
+    description: "Average payload size by integration"
+    labels: ["integration", "httpStatusCode"]
+    operation: "value"
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+  graylog_int_payload_size_hist:
+    type: "histogram"
+    description: "Average payload size"
+    operation: "value"
+    buckets: [0, 10, 100, 1000, 10000, 100000, 1000000]
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+    #  init-value: "NaN"
+  graylog_int_payload_size_by_int_hist:
+    type: "histogram"
+    description: "Average payload size by integration"
+    labels: ["integration"]
+    operation: "value"
+    buckets: [0, 10, 100, 1000, 10000, 100000, 1000000]
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+  graylog_int_payload_size_by_int_by_status_hist:
+    type: "histogram"
+    description: "Average payload size by integration"
+    labels: ["integration", "httpStatusCode"]
+    operation: "value"
+    buckets: [0, 10, 100, 1000, 10000, 100000, 1000000]
+    metric-value: payloadSizeInBytes
+    #parameters:
+    #  value-field: "payloadSizeInBytes"
+  graylog_int_duration_hist:
+    type: "histogram"
+    description: "Average duration"
+    operation: "duration"
+    buckets: [0.1, 0.3, 1, 3, 10]
+    parameters:
+      time_field: "timeInMillis"
+      message_type_field: "messageType"
+      correlation_id_field: "correlationId"
+      cache: "request-cache"
+  graylog_int_duration_by_int_hist:
+    type: "histogram"
+    description: "Average duration by integration"
+    labels: ["integration"]
+    operation: "duration"
+    buckets: [0.1, 0.3, 1, 3, 10]
+    parameters:
+      time_field: "timeInMillis"
+      message_type_field: "messageType"
+      correlation_id_field: "correlationId"
+      cache: "request-cache"
+  graylog_int_duration_by_int_by_status_hist:
+    type: "histogram"
+    description: "Average duration by integration"
+    labels: ["integration", "httpStatusCode"]
+    operation: "duration"
+    buckets: [0.1, 0.3, 1, 3, 10]
+    child-metrics: ["graylog_int_no_response_by_int_by_status_gauge", "graylog_int_no_response_by_int_by_status_counter"]
+    parameters:
+      time_field: "Time"                        # time_field: "timestamp"
+      time_format: "02.01.2006 15:04:05.000"    # time_format: "2006-01-02T15:04:05.000Z"
+      message_type_field: "messageType"
+      correlation_id_field: "correlationId"
+      cache: "request-cache"
+  graylog_int_no_response_by_int_by_status_counter:
+    type: "counter"
+    description: "No response counter"
+    labels: ["integration", "httpStatusCode"]
+    operation: "duration-no-response"
+    parameters:
+      cache_size: 10
+  graylog_int_no_response_by_int_by_status_gauge:
+    type: "gauge"
+    description: "No response gauge"
+    labels: ["integration", "httpStatusCode"]
+    operation: "duration-no-response"
+    parameters:
+      cache_size: 7
+queries:
+  query1:
+      metrics: ["graylog_int_count", "graylog_int_count_by_int", "graylog_int_count_by_int_by_status", "graylog_int_duration", "graylog_int_duration_by_int", "graylog_int_duration_by_int_by_status", "graylog_int_duration_hist", "graylog_int_duration_by_int_hist", "graylog_int_duration_by_int_by_status_hist", "graylog_int_payload_size", "graylog_int_payload_size_by_int", "graylog_int_payload_size_by_int_by_status", "graylog_int_payload_size_total", "graylog_int_payload_size_by_int_total", "graylog_int_payload_size_by_int_by_status_total", "graylog_int_payload_size_hist", "graylog_int_payload_size_by_int_hist", "graylog_int_payload_size_by_int_by_status_hist"]
+      streams: ["613b3f8c2ef2a50a5ad53918"]
+      query_string: "facility:test AND _exists_:integration AND messageType:(request OR response)"
+      timerange: "1m"
+      interval: "1m"
+      fields_in_order: ["correlationId", "integration", "timeInMillis", "messageType", "httpStatusCode", "payloadSizeInBytes", "Time"]
+      croniter: '* * * * *'
+      query_lag: "60s"
+      caches:
+        request-cache:
+          size: 15
+flags:
+  disable-timestamp : true

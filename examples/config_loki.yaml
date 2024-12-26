@@ -1,0 +1,122 @@
+apiVersion: "1.0.0.0"
+kind: cloud
+datasources:
+  loki:
+    host: <loki_url>
+    #user: if_required
+    #password: if_required
+    type: loki
+    tls-insecure-skip-verify: true
+    labels:
+      dbtype: loki
+exports:
+  prometheus:
+    strategy: pull
+    port: "8083"
+metrics:
+  records_count:
+    type: counter
+    description: Metric counts total number of messages in logs
+    operation: count
+    threads: 2
+  loki_messages_count_total:
+    type: "counter"
+    description: "Metric counts total number of events"
+    operation: "count"
+  loki_messages_count_total_by_host_by_container:
+    type: "counter"
+    description: "Metric counts total number of events"
+    labels: ["hostname"]
+    label-field-map:
+      container_name: container
+    operation: "count"
+    threads: 2
+  loki_messages_gauge_total_by_host_by_container:
+    type: "gauge"
+    description: "Metric counts total number for the last minute"
+    labels: ["hostname"]
+    label-field-map:
+      container_name: container
+    operation: "count"
+    threads: 2
+  envoy_duration:
+    type: "histogram"
+    description: "Envoy duration"
+    labels: ["method", "service", "status", "path"]
+    label-field-map:
+      node: hostname
+      container_name: container
+    metric-value: "duration"
+    operation: "value"
+    buckets: [0, 100, 10000]
+    threads: 2
+    parameters:
+      init-value: 17
+    expected-labels:
+      - method: [instance1]
+        service: [service10, service11]
+        status: [status1]
+        path: [path1]
+        container_name: [container_name1]
+        node: [node1]
+      - method: [instance2]
+        service: [service2]
+        status: [status2]
+        path: [path20, path21]
+        container_name: [container_name2]
+        node: [node2]
+queries:
+  query_count_grafana_loki:
+    metrics: [records_count]
+    query_string: '{job="fluentbit", namespace="grafana-loki"} |= ``'
+    timerange: 1m
+    croniter: '* * * * *'
+    interval: 1m
+    query_lag: 1m
+  query_envoys:
+    metrics: ["loki_messages_count_total", "envoy_duration", "loki_messages_count_total_by_host_by_container", "loki_messages_gauge_total_by_host_by_container"]
+    query_string: '{container=~".*gateway"} |= `envoyLog`'
+    timerange: "1m"
+    fields_in_order: ["hostname", "message", "container"]
+    croniter: '* * * * *'
+    query_lag: "25m"
+    interval: "1m"
+    enrich:
+      - source-field: message
+        regexp: '(?s).*Forward Request: .([A-Z]+) ([^ \?]+)[ \?].*Response: .([0-9])[0-9]{2} .*[^0-9]([0-9]+)ms.*' #multi-line regexp
+        threads: 2
+        dest-fields:
+          - field-name: method
+            template: "${1}"
+            default-value: "NOT_MATCHED_TO_REGEXP"
+          - field-name: path
+            template: "${2}"
+            default-value: "NOT_MATCHED_TO_REGEXP"
+            uri-processing:
+              uuid-replacer: "_UUID_"
+              id-digit-quantity: 4
+              id-replacer: "_ID_"
+              number-replacer: "_NUMBER_"
+          - field-name: status
+            template: "${3}xx"
+            default-value: "NOT_MATCHED_TO_REGEXP"
+          - field-name: duration
+            template: "${4}"
+            default-value: "NaN"
+      - source-field: path
+        threads: 2
+        regexp: '[^ \?]*\/(v[0-9])\/[^ \?]+'
+        dest-fields:
+          - field-name: service
+            template: "${1}"
+            default-value: "UNKNOWN"
+    gts-queue-size: 14400
+    gd-queue-size: 1
+    gm-queue-size: 10
+    last-timestamp-endpoint: '/api/v1/query?query=last_over_time(timestamp(loki_messages_count_total{dbtype="graylog",container="log-exporter"})[14d:1m])'
+    last-timestamp-json-path: "$.data.result[*].value[1]"
+    max-history-lookup: 3h
+general:
+  gm-queue-self-mon-size: 120
+  last-timestamp-retry-count: 100
+  last-timestamp-retry-period: 20s

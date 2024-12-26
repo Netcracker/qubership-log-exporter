@@ -1,0 +1,27 @@
+{{- if eq .Values.LME_MODE "pull" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: {{ .Values.NAMESPACE }}
+  labels:
+    name: '{{ .Values.SERVICE_NAME }}'
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/managed-by: monitoring-operator
+    app.kubernetes.io/name: {{ .Values.SERVICE_NAME }}-monitor
+    k8s-app: {{ .Values.SERVICE_NAME }}-monitor
+  name: {{ .Values.SERVICE_NAME }}-monitor
+spec:
+  endpoints:
+  - port: "http"
+    scheme: http
+    path: "/metrics"
+    interval: 1m
+    scrapeTimeout: 10s
+  jobLabel: k8s-app
+  selector:
+    matchLabels:
+      app: {{ .Values.LME_APPLICATION_NAME }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.NAMESPACE }}
+{{ end -}}

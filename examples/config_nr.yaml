@@ -1,0 +1,132 @@
+datasources:
+  newrelic:
+    type: newrelic
+    host: <newrelic_url>
+    user: <numeric_user_id>
+    password: <newrelic_query_key>
+    labels:
+      dbtype: newrelic
+exports:
+  prometheus:
+    strategy: pull
+    port: "8083"
+metrics:
+  msap_submitted_orders:
+    type: "counter"
+    description: "Metric counts number of msap_submitted_orders"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: ["name"]
+  msap_submitted_orders_2:
+    type: "counter"
+    description: "Metric counts number of msap_submitted_orders with use of templates"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: ["name"]
+  msap_submitted_orders_24h:
+    type: "counter"
+    description: "Metric counts number of msap_submitted_orders_24h"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: ["name"]
+  msap_count_operations:
+    type: "counter"
+    description: "Metric counts number of msap_count_operations"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: ["scenario"]
+  msap_ordered_presets:
+    type: "gauge"
+    description: "Metric counts number of msap_ordered_presets"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: ["preset"]
+  msap_active_sessions:
+    type: "counter"
+    description: "Metric counts number of msap_active_sessions"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: []
+    parameters:
+      init-value: "0"
+  msap_unique_agent_ids:
+    type: "counter"
+    description: "Metric counts number of msap_unique_agent_ids"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: []
+    parameters:
+      init-value: "0"
+  experimental_metric:
+    type: "counter"
+    description: "Metric counts number of experimental_metric"
+    operation: "value"
+    metric-value: "_RESULT_"
+    labels: ["name", "scenario"]
+queries:
+  msap_submitted_orders:
+      metrics: ["msap_submitted_orders"]
+      query_string: |
+        SELECT count(*) FROM <table_name> FACET name where name = 'operationCompleted' SINCE 1 minute ago
+      timerange: "1m"
+      interval: "1m"
+      croniter: '* * * * *'
+      query_lag: "60s"
+  msap_submitted_orders_2:
+      metrics: ["msap_submitted_orders_2"]
+      query_string: |
+        SELECT count(*) FROM <table_name> FACET name where name = 'operationCompleted' SINCE '{{.StartTime}}' UNTIL '{{.EndTime}}'
+      timerange: "1m"
+      interval: "1m"
+      croniter: '* * * * *'
+      query_lag: "60s"
+  msap_submitted_orders_24h:
+      metrics: ["msap_submitted_orders_24h"]
+      query_string: |
+        SELECT count(*) FROM <table_name> FACET name where name = 'operationCompleted' SINCE 24 hours ago
+      timerange: "24h"
+      interval: "24h"
+      croniter: '0 0 * * *'
+      query_lag: "60s"
+  msap_count_operations:
+      metrics: ["msap_count_operations"]
+      query_string: |
+        SELECT count(*) FROM <table_name> FACET scenario where name = 'orderSubmitted' LIMIT MAX SINCE '2023-01-01'
+      timerange: "1m"
+      interval: "1m"
+      croniter: '* * * * *'
+      query_lag: "60s"
+  msap_ordered_presets:
+      metrics: ["msap_ordered_presets"]
+      query_string: |
+        SELECT count(*) FROM <table_name> FACET preset where (name = 'orderSubmitted' or name = 'operationCompleted') LIMIT MAX SINCE '2023-01-01'
+      timerange: "1m"
+      interval: "1m"
+      croniter: '* * * * *'
+      query_lag: "60s"
+  msap_active_sessions:
+      metrics: ["msap_active_sessions"]
+      query_string: |
+        SELECT uniqueCount(deviceUuid) FROM <table_name> SINCE 1 hours ago LIMIT 50
+      timerange: "1m"
+      interval: "1m"
+      croniter: '* * * * *'
+      query_lag: "60s"
+  msap_unique_agent_ids:
+      metrics: ["msap_unique_agent_ids"]
+      query_string: |
+        SELECT uniqueCount(agentId) from <table_name> SINCE 24 hours ago LIMIT MAX
+      timerange: "1m"
+      interval: "1m"
+      croniter: '* * * * *'
+      query_lag: "60s"
+  experimental_query:
+      metrics: ["experimental_metric"]
+      query_string: |
+        SELECT count(*) FROM <table_name> FACET name, scenario where name = 'operationCompleted' SINCE 30 minute ago
+      timerange: "1m"
+      interval: "1m"
+      croniter: '* * * * *'
+      query_lag: "60s"
+flags:
+  disable-timestamp : true

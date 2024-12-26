@@ -1,0 +1,116 @@
+GRAYLOG_UI_URL: '' # The Graylog service URL to which the log-exporter is connected.
+CSE_GRAYLOG_USER: '' # The Graylog user. May be omitted if it is already set in the secret.
+CSE_GRAYLOG_PASSWORD: '' # The Graylog password. May be omitted if it is already set in the secret.
+GRAYLOG_HOST: '' # The parameter allows to overwrite GRAYLOG_UI_URL
+GRAYLOG_USER: '' # The parameter allows to overwrite CSE_GRAYLOG_USER
+GRAYLOG_PASSWORD: '' # The parameter allows to overwrite CSE_GRAYLOG_PASSWORD
+LME_LOKI_URL: '' # Loki service URL
+LME_LOKI_USER: '' # Loki service user. May be omitted if it is already set in the secret
+LME_LOKI_PASSWORD: '' # Loki service password. May be omitted if it is already set in the secret
+VICTORIA_HOST: '' # The Victoria vmagent service URL (port is usually 8429)
+VICTORIA_USER: '' # The Victoria vmagent user. May be omitted if it is already set in the secret
+VICTORIA_PASSWORD: '' # The Victoria vmagent password. May be omitted if it is already set in the secret
+PROMRW_HOST: '' # The Carbon-clickhouse service URL
+PROMRW_USER: '' # The Carbon-clickhouse user. May be omitted if it is already set in the secret. Usually empty
+PROMRW_PASSWORD: '' # The Carbon-clickhouse password. May be omitted if it is already set in the secret. Usually empty
+LAST_TIMESTAMP_HOST: '' # Last timestamp extraction service URL (usually vmauth or graphite-clickhouse). Overwrites MONITORING_EXT_MONITORING_QUERY_URL
+LAST_TIMESTAMP_USER: '' # Last timestamp extraction service user (empty for graphite-clickhouse). Overwrites CSE_EXTERNAL_MONITORING_USER
+LAST_TIMESTAMP_PASSWORD: '' # Last timestamp extraction service password (empty for graphite-clickhouse). Overwrites CSE_EXTERNAL_MONITORING_PASSWORD
+ERROR_COUNT_METRICS_ENABLED: '' # Set to true if error counting metrics are required. Default value is false.
+CONFIG_MAP: '' # Full custom log-exporter yaml configuration, it overwrites completely out-of-box configuration
+LOG_LEVEL: 'INFO' # Log-exporter log-level, possible values : trace, debug, info, warn (warning), error, fatal, panic
+CONFIG_QUERIES: '' # Here additional queries could be specified. Out-of-box queries are not overwritten
+CONFIG_METRICS: '' # Here additional metrics could be specified. Out-of-box metrics are not overwritten
+PUSH_CLOUD_LABELS: # A map of additional labels to be added to all pushed metrics
+MONITORING_NAMESPACE: 'platform-monitoring' # Parameter is used for evaluating the default values of VICTORIA_HOST, PROMRW_HOST, and MONITORING_EXT_MONITORING_QUERY_URL.
+MONITORING_TYPE: 'VictoriaDB' # Two values are supported : VictoriaDB (data is pushing plain-text to VMAgent) or Prometheus (data is pushing in promrw binary format)
+MONITORING_EXT_MONITORING_QUERY_URL: '' # The Victoria vmauth URL (port is usually 8427 or 8429) OR graphite-clickhouse service URL for PROMRW case.
+CSE_EXTERNAL_MONITORING_USER: '' # The MONITORING_EXT_MONITORING_QUERY_URL user. May be omitted if it is already set in the secret.
+CSE_EXTERNAL_MONITORING_PASSWORD: '' # The MONITORING_EXT_MONITORING_QUERY_URL password. May be omitted if it is already set in the secret.
+LME_MODE: 'push' # The parameter specifies LME working mode. Set to "pull" if LME is not expected to push metrics to Prometheus, Victoria or any other system and expected to work in the pull mode only
+LME_LOG_FORMAT: 'cloud' # The LME log format. The possible values are "cloud", "json", "text": "cloud" is compatible with logging guide, "text" is the standard logrus library format, "json" has the same content as "text", but in json
+CONSUL_URL: '' # Consul URL. LME uses Consul to extract log.level property value for log-level runtime modification.
+CONSUL_ADMIN_TOKEN: '' # Consul token for the Consul CONSUL_URL. Token must have enough rights to read log.level property value.
+LME_CONSUL_ENABLED: 'false' # Set to "true" if there is a need to modify LME log-level in runtime via Consul.
+LME_CONSUL_CHECK_PERIOD: '1m' # The parameter specifies the period between calls to Consul in golang time.ParseDuration format. Less period means more frequent calls and faster reaction to log.level modification, but higher load on Consul
+LME_CONSUL_LOG_LEVEL_PATH: '' # The parameter specifies the path to the log.level property in the Consul key-value storage if the default path is not suitable.
+LME_DATASOURCE_TYPE: 'graylog'  # LME datasource type. Possible values are graylog and newrelic. Configure this only if you are fully aware of New Relic integration functionality and understand the necessity of New Relic datasource usage on the project.
+LME_NEWRELIC_URL: '' # URL of New Relic Insights query API
+LME_NEWRELIC_ACCOUNT_ID: '' # New Relic Account Id
+LME_NEWRELIC_X_QUERY_KEY: '' # New Relic X-Query-Key
+
+DEPLOYMENT_STRATEGY_TYPE: '' # Sets Kubernetes rolling update deployment strategies. Possible values are recreate, best_effort_controlled_rollout, ramped_slow_rollout, custom_rollout
+DEPLOYMENT_STRATEGY_MAXSURGE: '' # Sets maxSurge if DEPLOYMENT_STRATEGY_TYPE is custom_rollout
+DEPLOYMENT_STRATEGY_MAXUNAVAILABLE: '' # Sets maxUnavailable if DEPLOYMENT_STRATEGY_TYPE is custom_rollout
+IMAGE_REPOSITORY: '' # TO_BE_REPLACED
+TAG: '' # TO_BE_REPLACED
+NAMESPACE: '' # TO_BE_REPLACED
+
+# Technical helm parameters
+LME_APPLICATION_NAME: 'log-exporter' # LME Application name. The parameter is required only if several log-exporter instances need to be installed in the same namespace (for example, one instance is communicating with the graylog, and the other is communicating with the New Relic)
+LME_LTS_RETRY_COUNT: "5" # Number of attempts to extract the last timestemp from Prometheus. If the value is 0, the last timestamp is not extracted; if the value is 1, retry is disabled.
+LME_LTS_RETRY_PERIOD: "10s" # The time period between attempts to extract the last timestemp from Prometheus or Victoria.
+LME_DATASOURCE_RETRY: '' # The parameter allows to enable or disable retry mechanism for the datasource (Graylog or New Relic). For the graylog datasource retry is enabled by default, for the New Relic it is disabled by default.
+LME_DATASOURCE_RETRY_PERIOD: "5s" # The time period between attempts to extract the log records from the datasource (Graylog or New Relic).
+LME_PUSH_RETRY: 'true' # The parameter allows to enable or disable retry mechanism for the Prometheus or Victoria in the push mode.
+LME_PUSH_RETRY_PERIOD: "5s" # The time period between attempts to push the metrics to Prometheus or Victoria.
+
+# K8s Memory and CPU limits
+MEMORY_LIMIT: "1024Mi"
+MEMORY_REQUEST: "1024Mi"
+CPU_REQUEST: "100m"
+CPU_LIMIT: "2"
+
+# Graylog emulator configuration:
+GRAYLOG_EMULATOR_ENABLED: '' # To enable Graylog emulator set this parameter to "true". Must be used only on dev and test environments
+GRAYLOG_EMULATOR_DATA: # List of the graylog emulator responses. If the parameter is not set, default data set is used. The parameter is used only if GRAYLOG_EMULATOR_ENABLED is set to "true"
+  - |
+    hostname,message,container,pod,namespace,uniq_id
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/10/pPzI3K82YPfypAdf/websocket  Response:  200  113ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/17/pQ6URM5wmADuiGTA/websocket  Response:  200  1ms TEXT,container10,pod10,namespace10,2
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/11/pQBvH6sRbgtfoxCT/websocket  Response:  200  10000ms TEXT,container10,pod10,namespace10,3
+    host00,TEXT Forward Request:  GET /api/v1/call/110  Response:  200  1000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  PUT /api/v1/call/517  Response:  200  113ms TEXT,container10,pod11,namespace10,2
+    host00,TEXT Forward Request:  PUT /api/v1/call/518  Response:  300  1ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  DELETE /api/v1/call/519  Response:  200  10000ms TEXT,container10,pod11,namespace10,3
+    host00,TEXT Forward Request:  DELETE /api/v1/call/510  Response:  200  1000ms TEXT,container10,pod11,namespace10,4
+  - |
+    hostname,message,container,pod,namespace,uniq_id
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/10/pQM2HJWqR0hoCokz/websocket Response:  200  213ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/65/pQMZLoFV5bxbiuOh/websocket Response:  200  2ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/33/pRKCrTfGAJgFvM4e/websocket Response:  200  20000ms TEXT,container10,pod11,namespace10,5
+    host00,TEXT Forward Request:  GET /api/v1/call/121 Response:  200  2000ms TEXT,container10,pod12,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/117 Response:  200  113ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/118 Response:  200  1ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/119 Response:  200  10000ms TEXT,container10,pod11,namespace10,6
+    host00,TEXT Forward Request:  GET /api/v1/call/110 Response:  200  1000ms TEXT,container10,pod11,namespace10,6
+  - |
+    hostname,message,container,pod,namespace,uniq_id
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/47/pRQsjaxbdYhxDJNx/websocket Response:  200 313ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/52/sUIkh0VLrSg67zdX/websocket Response:  200  3ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v4/tenant-manager/watch/98/sVSmZgDhdLlMJXRK/websocket Response:  500  30000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/131 Response:  500  3000ms TEXT,container10,pod22,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/127 Response:  200  213ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/128 Response:  200  2ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/129 Response:  200  20000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/121 Response:  200  2000ms TEXT,container10,pod12,namespace10,1
+  - |
+    hostname,message,container,pod,namespace,uniq_id
+    host00,TEXT Forward Request:  POST /api/v4/tenant-manager/watch/76/sWHTJtgQBUPPvyzr/websocket Response:  200  413ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  POST /api/v4/tenant-manager/watch/77/sWMUIpthn5TH7YQ8/websocket Response:  200  4ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  POST /api/v4/tenant-manager/watch/23/AEe1IRlbwDy4QzuM/websocket Response:  400  40000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  POST /api/v1/call/141 Response:  400  4000ms TEXT,container40,pod42,namespace40,1
+    host00,TEXT Forward Request:  GET /api/v1/call/137 Response:  200  313ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/138 Response:  200  3ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/139 Response:  500  30000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  GET /api/v1/call/131 Response:  500  3000ms TEXT,container10,pod22,namespace10,1
+  - |
+    hostname,message,container,pod,namespace,uniq_id
+    host00,TEXT Forward Request:  PUT /api/v4/tenant-manager/watch/11/4zyD4XxKNt6BFAag/websocket Response:  200  113ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  PUT /api/v4/tenant-manager/watch/13/4PDQcumf7Bex5apx/websocket Response:  300  1ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  DELETE /api/v4/tenant-manager/watch/53/0fb3wpPguUkoEuni/websocket Response:  200  10000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  DELETE /api/v1/call/510 Response:  200  1000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  POST /api/v1/call/147 Response:  200  413ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  POST /api/v1/call/148 Response:  200  4ms TEXT,container10,pod10,namespace10,1
+    host00,TEXT Forward Request:  POST /api/v1/call/149 Response:  400  40000ms TEXT,container10,pod11,namespace10,1
+    host00,TEXT Forward Request:  POST /api/v1/call/141 Response:  400  4000ms TEXT,container40,pod42,namespace40,1

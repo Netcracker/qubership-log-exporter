@@ -1,0 +1,221 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: '{{ .Values.SERVICE_NAME }}'
+    app: '{{ .Values.LME_APPLICATION_NAME }}'
+    app.kubernetes.io/name: '{{ .Values.SERVICE_NAME }}'
+    app.kubernetes.io/instance: '{{ cat (coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME) "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}'
+    app.kubernetes.io/version: '{{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}'
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: '{{ .Values.LME_APPLICATION_NAME }}'
+    app.kubernetes.io/managed-by: saasDeployer
+    app_name: monitoring
+    app.kubernetes.io/technology: 'go'
+  name: {{ .Values.LME_APPLICATION_NAME }}
+  namespace: {{ .Values.NAMESPACE }}
+spec:
+  strategy:
+    {{- if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "recreate" }}
+    type: Recreate
+    {{- else if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "best_effort_controlled_rollout" }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 80%
+    {{- else if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "ramped_slow_rollout" }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    {{- else if eq (default "" .Values.DEPLOYMENT_STRATEGY_TYPE) "custom_rollout" }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.DEPLOYMENT_STRATEGY_MAXSURGE | default "25%" }}
+      maxUnavailable: {{ .Values.DEPLOYMENT_STRATEGY_MAXUNAVAILABLE | default "25%" }}
+    {{- else }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    {{- end }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.LME_APPLICATION_NAME }}
+  template:
+    metadata:
+      labels:
+        name: '{{ coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME }}'
+        app: '{{ .Values.LME_APPLICATION_NAME }}'
+        app.kubernetes.io/name: '{{ coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME }}'
+        app.kubernetes.io/instance: '{{ cat (coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME) "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}'
+        app.kubernetes.io/version: '{{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}'
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: '{{ .Values.LME_APPLICATION_NAME }}'
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+      - image: '{{ .Values.IMAGE_REPOSITORY }}:{{ .Values.TAG }}'
+        imagePullPolicy: IfNotPresent
+        command: ["/logexporter","-config-path", "/config/config.yaml", "-log-format", '{{ .Values.LME_LOG_FORMAT }}', "-log-level", '{{ .Values.LOG_LEVEL }}']
+        livenessProbe:
+          httpGet:
+            path: /probe
+            port: http
+        readinessProbe:
+          httpGet:
+            path: /probe
+            port: http
+        name: log-exporter
+        ports:
+        - containerPort: 8081
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            cpu: '{{ .Values.CPU_LIMIT }}'
+            memory: '{{ .Values.MEMORY_LIMIT }}'
+          requests:
+            cpu: '{{ .Values.CPU_REQUEST }}'
+            memory: '{{ .Values.MEMORY_REQUEST }}'
+        volumeMounts:
+        - mountPath: /config/
+          name: vol-log-exporter
+        {{- if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+        - name: tmp
+          mountPath: /tmp
+        - name: env
+          mountPath: /etc/env
+        - name: ncdiag
+          mountPath: /app/ncdiag
+        - name: glowroot
+          mountPath: /app/glowroot
+        - name: nss
+          mountPath: /app/nss
+        - name: java-certs
+          mountPath: /etc/ssl/certs/java
+        {{- end }}
+        env:
+        - name: CLOUD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NAMESPACE
+          value: '{{ .Values.NAMESPACE }}'
+        - name: CONTAINER_NAME
+          value: log-exporter
+        - name: GRAYLOG_USER
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-graylog-credentials
+              key: GRAYLOG_USER
+              optional: true
+        - name: GRAYLOG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-graylog-credentials
+              key: GRAYLOG_PASSWORD
+              optional: true
+        - name: NEWRELIC_ACCOUNT_ID
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-newrelic-credentials
+              key: NEWRELIC_ACCOUNT_ID
+              optional: true
+        - name: NEWRELIC_X_QUERY_KEY
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-newrelic-credentials
+              key: NEWRELIC_X_QUERY_KEY
+              optional: true
+        - name: LOKI_USER
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-loki-credentials
+              key: LOKI_USER
+              optional: true
+        - name: LOKI_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-loki-credentials
+              key: LOKI_PASSWORD
+              optional: true
+        - name: VICTORIA_USER
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-victoria-credentials
+              key: VICTORIA_USER
+              optional: true
+        - name: VICTORIA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-victoria-credentials
+              key: VICTORIA_PASSWORD
+              optional: true
+        - name: PROMRW_USER
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-promrw-credentials
+              key: PROMRW_USER
+              optional: true
+        - name: PROMRW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-promrw-credentials
+              key: PROMRW_PASSWORD
+              optional: true
+        - name: LAST_TIMESTAMP_USER
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-last-timestamp-credentials
+              key: LAST_TIMESTAMP_USER
+              optional: true
+        - name: LAST_TIMESTAMP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: log-exporter-last-timestamp-credentials
+              key: LAST_TIMESTAMP_PASSWORD
+              optional: true
+        - name: CONSUL_URL
+          value: '{{ .Values.CONSUL_URL }}'
+        - name: CONSUL_ADMIN_TOKEN
+          value: '{{ .Values.CONSUL_ADMIN_TOKEN }}'
+        - name: LME_CONSUL_ENABLED
+          value: '{{ .Values.LME_CONSUL_ENABLED }}'
+        - name: LME_CONSUL_CHECK_PERIOD
+          value: '{{ .Values.LME_CONSUL_CHECK_PERIOD }}'
+        - name: LME_CONSUL_LOG_LEVEL_PATH
+          value: '{{ .Values.LME_CONSUL_LOG_LEVEL_PATH }}'
+        securityContext:
+          {{- if eq .Values.PAAS_PLATFORM "KUBERNETES" }}
+          runAsGroup: 10001
+          {{- end }}
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: {{ .Values.LME_APPLICATION_NAME }}-config
+        name: vol-log-exporter
+      {{- if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
+      - name: tmp
+        emptyDir: {}
+      - name: env
+        emptyDir: {}
+      - name: ncdiag
+        emptyDir: {}
+      - name: glowroot
+        emptyDir: {}
+      - name: nss
+        emptyDir: {}
+      - name: java-certs
+        emptyDir: {}
+      {{- end }}

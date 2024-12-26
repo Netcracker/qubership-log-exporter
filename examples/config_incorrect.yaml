@@ -1,0 +1,151 @@
+# This is the config file for testing -check-config startup option
+apiVersion: "1.0.0.0"
+kind: cloud
+datasources:
+  graylog1:
+    host: https://<HOSTNAME_OR_HOST_IP>
+    user: user
+    tls-insecure-skip-verify: true
+    labels:
+      dbtype: graylog
+  graylog2:
+exports:
+  victoria:
+    strategy: push
+    host: https://host:port
+    endpoint: "/api/v1/import/prometheus"
+    user: user
+    tls-insecure-skip-verify: true
+    last-timestamp-host:
+      user: user
+  victoria_corrupted_lth:
+    strategy: push
+    host: https://host:port
+    endpoint: "/api/v1/import/prometheus"
+    user: user
+    tls-insecure-skip-verify: true
+    last-timestamp-host:
+      host:
+  victoria2:
+    strategy: push
+  prometheus:
+    strategy: pull
+    port: "8083"
+  prometheus2:
+    strategy: pull
+  unknown_exporter:
+    strategy: unknown_strategy
+  empty_exporter:
+metrics:
+  empty_metric:
+  double_query_metric:
+    type: "UNKNOWN"
+    description: "No description"
+    labels: ["label_name", "label_name"]
+    label-field-map:
+      label: field_name
+    operation: "UNKNOWN"
+    threads: -1
+    metric-value: metric_value_field
+    parameters:
+      unknown-parameter: -1
+      time_field: time_field_name
+      message_type_field: message_type_field_name
+      correlation_id_field: correlation_id_field_name
+      value-field: value-field_name
+    expected-labels:
+      - hostname: [instance1]
+      - hostname: [instance2]
+        container_name: [container_name20, container_name21]
+  histogram_without_buckets:
+    type: "histogram"
+    description: "Envoy duration"
+    labels: ["method", "service", "status", "path", "container_name"]
+    label-field-map:
+      node: hostname
+    metric-value: "duration"
+    operation: "value"
+    threads: 2
+    parameters:
+      time_field: field
+      default-value: 1
+  gauge_with_buckets:
+    type: "gauge"
+    description: "Envoy duration"
+    labels: ["method", "service", "status", "path", "container_name"]
+    label-field-map:
+      node: hostname
+    metric-value: "duration"
+    operation: "count"
+    buckets: [0, 1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000]
+    threads: 2
+    child-metrics: ["child1", "child1", "child2"]
+    parameters:
+      time_field: field
+      init-value: "1"
+  histogram_with_duplicate_buckets:
+    type: "histogram"
+    description: "Envoy duration"
+    labels: ["method", "service", "status", "path", "container_name"]
+    child-metrics: ["child2", "child_and_query"]
+    label-field-map:
+      node: hostname
+    metric-value: ""
+    operation: "value"
+    buckets: [0, 0, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000]
+    threads: -1
+  child2:
+  child_and_query:
+queries:
+  empty_query:
+  query1:
+      metrics: ["double_query_metric", "metric_unknown0123", "metric_unknown0123"]
+      streams: ["000000000000000000000001"]
+      query_string: '_exists_:level AND kubernetes_container_name: *gateway'
+      timerange: "1d"
+      fields_in_order: ["hostname", "message", "container_name", "container_name"]
+      croniter: '* * * * * * *'
+      query_lag: "1d"
+      interval: "1d"
+      enrich:
+        - source-field: message0
+          regexp: '(?s).*Forward Request: .([A-Z]+) ([^ \?]+)[ \?].*Response: .([0-9])[0-9]{2}({({ .*[^0-9]([0-9]+)ms.*' #multi-line regexp
+          threads: 2
+          dest-fields:
+            - field-name: method
+              template:
+              default-value: "NOT_MATCHED_TO_REGEXP"
+            - field-name: path
+              template: "${2}"
+              default-value: "NOT_MATCHED_TO_REGEXP"
+              uri-processing:
+                uuid-replacer: "_UUID_"
+                id-digit-quantity: 4
+                id-replacer: "_ID_"
+                number-replacer: "_NUMBER_"
+            - field-name: status
+              template: "${3}xx"
+              default-value: "NOT_MATCHED_TO_REGEXP"
+            - field-name: duration
+              template: "${4}"
+              default-value: "NaN"
+        - source-field: path0
+          threads: 2
+          regexp: ''
+          dest-fields:
+            - field-name: service
+              template: "${1}"
+              default-value: "UNKNOWN"
+        - source-field: ""
+      gts-queue-size: d14400
+      gd-queue-size: d1
+      gm-queue-size: d10
+      last-timestamp-endpoint: '/api/v1/query?query=last_over_time(timestamp(graylog_messages_count_total{dbtype="graylog",container="log-exporter"})[14d:1m])'
+      last-timestamp-json-path: "$.data.result[*].value[1]"
+      max-history-lookup: 3h
+  query2:
+      metrics: ["double_query_metric", "child_and_query"]
+      gts-queue-size: -14400
+      gd-queue-size: -1
+      gm-queue-size: -10
+

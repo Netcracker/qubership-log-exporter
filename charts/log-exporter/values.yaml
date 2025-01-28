@@ -46,8 +46,7 @@ PAAS_PLATFORM: 'KUBERNETES'
 IMAGE_REPOSITORY: 'ghcr.io/netcracker/qubership-log-exporter'
 TAG: 'main'
 NAMESPACE: '' # TO_BE_REPLACED
-imagePullSecrets:  # Only pods which provide own keys can access the private registry.
-  - name: regcred
+imagePullSecrets: []  # Only pods which provide own keys can access the private registry.
 
 # Technical helm parameters
 LME_APPLICATION_NAME: 'log-exporter' # LME Application name. The parameter is required only if several log-exporter instances need to be installed in the same namespace (for example, one instance is communicating with the graylog, and the other is communicating with the New Relic)

@@ -42,9 +42,12 @@ LME_NEWRELIC_X_QUERY_KEY: '' # New Relic X-Query-Key
 DEPLOYMENT_STRATEGY_TYPE: '' # Sets Kubernetes rolling update deployment strategies. Possible values are recreate, best_effort_controlled_rollout, ramped_slow_rollout, custom_rollout
 DEPLOYMENT_STRATEGY_MAXSURGE: '' # Sets maxSurge if DEPLOYMENT_STRATEGY_TYPE is custom_rollout
 DEPLOYMENT_STRATEGY_MAXUNAVAILABLE: '' # Sets maxUnavailable if DEPLOYMENT_STRATEGY_TYPE is custom_rollout
-IMAGE_REPOSITORY: '' # TO_BE_REPLACED
-TAG: '' # TO_BE_REPLACED
+PAAS_PLATFORM: 'KUBERNETES'
+IMAGE_REPOSITORY: 'ghcr.io/netcracker/qubership-log-exporter'
+TAG: 'main'
 NAMESPACE: '' # TO_BE_REPLACED
+imagePullSecrets:  # Only pods which provide own keys can access the private registry.
+  - name: regcred
 
 # Technical helm parameters
 LME_APPLICATION_NAME: 'log-exporter' # LME Application name. The parameter is required only if several log-exporter instances need to be installed in the same namespace (for example, one instance is communicating with the graylog, and the other is communicating with the New Relic)

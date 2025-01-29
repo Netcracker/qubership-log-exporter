@@ -191,6 +191,7 @@ spec:
         securityContext:
           {{- if eq .Values.PAAS_PLATFORM "KUBERNETES" }}
           runAsGroup: 10001
+          runAsUser: 10001
           {{- end }}
           readOnlyRootFilesystem: true
           runAsNonRoot: true
@@ -200,6 +201,10 @@ spec:
           capabilities:
             drop:
               - ALL
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       volumes:
       - configMap:
           defaultMode: 420

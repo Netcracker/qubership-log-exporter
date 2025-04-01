@@ -1,13 +1,13 @@
 module log_exporter
 
 go 1.21
-toolchain go1.23.6
+toolchain go1.24.1
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
-	github.com/hashicorp/consul/api v1.31.2
+	github.com/hashicorp/consul/api v1.32.0
 	github.com/prometheus/client_golang v1.21.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.62.0

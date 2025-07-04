@@ -12,7 +12,7 @@
 
 * Multiple data sources: **Graylog**, **Loki**, **New Relic**
 * Metric types: `counter`, `gauge`, `histogram`
-* Powerful enrichment (regex, JSON-path, URI templating)
+* Powerful enrichment (regular expression, JSON-path, URI templating)
 * Push (**Victoria vmagent**, **Prometheus remote-write**) or pull (`/metrics`) modes
 * High-availability "last-timestamp" mechanism for exactly-once push
 * Self-monitoring metrics and `/probe` health endpoint

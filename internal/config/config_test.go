@@ -1,4 +1,3 @@
-
 // Copyright 2024 Qubership
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,30 +15,31 @@
 package config
 
 import (
-    "fmt"
-    "testing"
-    log "github.com/sirupsen/logrus"
+	"fmt"
+	"testing"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func TestExampleConfigs(t *testing.T) {
-    log.SetLevel(log.ErrorLevel)
-    exampleConfigs := []string{
-     "../../examples/config_cloud_promrw.yaml",
-     "../../examples/config_cloud_victoria.yaml",
-     "../../examples/config_emu.yaml",
-     "../../examples/config_nr.yaml",
-     "../../examples/unit_test.yaml",
-    }
-    for i, path := range exampleConfigs {
-        t.Run("TestExampleConfig" + fmt.Sprintf("%v", i), func(t *testing.T) {
-            testConfig, err := SimpleSilentRead(path)
-            if err != nil {
-                t.Errorf("Error parsing test config %v : %+v", path, err)
-            }
-            err = ValidateConfig(testConfig)
-            if err != nil {
-                t.Errorf("Error validating test config %v : %+v", path, err)
-            }
-        })
-    }
+	log.SetLevel(log.ErrorLevel)
+	exampleConfigs := []string{
+		"../../examples/config_cloud_promrw.yaml",
+		"../../examples/config_cloud_victoria.yaml",
+		"../../examples/config_emu.yaml",
+		"../../examples/config_nr.yaml",
+		"../../examples/unit_test.yaml",
+	}
+	for i, path := range exampleConfigs {
+		t.Run("TestExampleConfig"+fmt.Sprintf("%v", i), func(t *testing.T) {
+			testConfig, err := SimpleSilentRead(path)
+			if err != nil {
+				t.Errorf("Error parsing test config %v : %+v", path, err)
+			}
+			err = ValidateConfig(testConfig)
+			if err != nil {
+				t.Errorf("Error validating test config %v : %+v", path, err)
+			}
+		})
+	}
 }

@@ -36,7 +36,7 @@ func CreateNoResponseCacheRepo(appConfig *config.Config) *NoResponseCacheRepozit
 			continue
 		}
 		cacheSizeStr := metricCfg.Parameters["cache_size"]
-		cacheSize, err := strconv.ParseInt(cacheSizeStr, 10, 64)
+		cacheSize, err := strconv.ParseInt(cacheSizeStr, 10, 32)
 		if err != nil {
 			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing value '%v' for parameter cache_size for the metric %v : %+v ; default value 30 will be used", cacheSizeStr, metricName, err)
 			cacheSize = 30

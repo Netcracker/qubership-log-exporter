@@ -109,7 +109,7 @@ func InitSelfMonitoring(appConfig *config.Config, omnipresentLabels map[string]s
 	regexMatchedCounterVec = collectors.NewCustomCounter(
 		prometheus.NewDesc(
 			"regex_matched",
-			"Count of regexps have been matched per query, enrich_index",
+			"Count of regular expressions have been matched per query, enrich_index",
 			enrichSelfLabels,
 			omnipresentLabels,
 		),
@@ -118,7 +118,7 @@ func InitSelfMonitoring(appConfig *config.Config, omnipresentLabels map[string]s
 	regexNotMatchedCounterVec = collectors.NewCustomCounter(
 		prometheus.NewDesc(
 			"regex_not_matched",
-			"Count of regexps have been not matched per query, enrich_index",
+			"Count of regular expressions have been not matched per query, enrich_index",
 			enrichSelfLabels,
 			omnipresentLabels,
 		),

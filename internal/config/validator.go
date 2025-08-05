@@ -152,9 +152,6 @@ func ValidateConfig(config *Config) error {
 		}
 		switch exportConfig.Strategy {
 		case "push":
-			/* if exportConfig.Host == "" || exportConfig.User == "" || exportConfig.Password == "" || exportConfig.Endpoint == "" {
-			    startupBlockingErrors = append(startupBlockingErrors, fmt.Sprintf("Section exports : Export %v with 'push' strategy must have fields host, user, password and endpoint specified", exportName))
-			} */
 			_, err := url.ParseRequestURI(exportConfig.Host)
 			if err != nil {
 				startupBlockingErrors = append(startupBlockingErrors, fmt.Sprintf("Section exports : Export %v with 'push' strategy must have correct host, current value %v is incorrect : %+v", exportName, exportConfig.Host, err))

@@ -20,11 +20,11 @@ exports:
     tls-insecure-skip-verify: true
 metrics:
   graylog_messages_count_total:
-    type: "counter" 
+    type: "counter"
     description: "Metric counts total number of events"
     operation: "count"
   graylog_messages_count_total_by_host_by_container:
-    type: "counter" 
+    type: "counter"
     description: "Metric counts total number of events"
     labels: ["hostname"]
     label-field-map:

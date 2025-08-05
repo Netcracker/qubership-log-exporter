@@ -760,7 +760,7 @@ func processCrypto(path string, config *Config) error {
 			}
 			dsConfig.DecryptedPassword, err = cryptoService.Decrypt([]byte(dsConfig.Password[len(enc_prefix):]))
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_1603).Errorf("Failed to decrypt password for %v : %+v", dsName, err)
+				log.WithField(ec.FIELD, ec.LME_1603).Errorf("Failed to decrypt password for %v", dsName)
 			} else {
 				log.Infof("Password decrypted successfully for %v", dsName)
 			}

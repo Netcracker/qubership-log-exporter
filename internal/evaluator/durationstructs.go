@@ -17,6 +17,7 @@ package evaluator
 import (
 	"log_exporter/internal/config"
 	ec "log_exporter/internal/utils/errorcodes"
+	"math"
 	"strconv"
 	"sync"
 
@@ -38,6 +39,11 @@ func CreateNoResponseCacheRepo(appConfig *config.Config) *NoResponseCacheRepozit
 		cacheSize, err := strconv.ParseInt(cacheSizeStr, 10, 64)
 		if err != nil {
 			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing value '%v' for parameter cache_size for the metric %v : %+v ; default value 30 will be used", cacheSizeStr, metricName, err)
+			cacheSize = 30
+		}
+		// Ensure cacheSize is within valid int range and positive
+		if cacheSize < 1 || cacheSize > int64(math.MaxInt32) {
+			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Parameter cache_size for the metric %v is out of bounds (%v); default value 30 will be used", metricName, cacheSize)
 			cacheSize = 30
 		}
 		repo.caches[metricName] = CreateNoResponseCache(int(cacheSize))

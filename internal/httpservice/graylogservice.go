@@ -32,6 +32,7 @@ import (
 )
 
 var (
+	// editorconfig-checker-disable used because next lines are part of the template
 	graylogJsonTemplate = `{
   %v
   "query_string": {
@@ -45,6 +46,8 @@ var (
   },
   "fields_in_order": %v
 }`
+
+// editorconfig-checker-enable
 )
 
 type GraylogService struct {

@@ -16,59 +16,60 @@ package processors
 
 import (
 	"fmt"
+	ec "log_exporter/internal/utils/errorcodes"
 	"os"
-	"syscall"
-    "os/signal"
+	"os/signal"
 	"runtime"
-    ec "log_exporter/internal/utils/errorcodes"
+	"syscall"
+
 	log "github.com/sirupsen/logrus"
 )
 
 type SignalProcessor struct {
-    osIntSignals  chan os.Signal
-    osQuitSignals chan os.Signal
-	stopCroniter func()
+	osIntSignals  chan os.Signal
+	osQuitSignals chan os.Signal
+	stopCroniter  func()
 	versionString func() string
 }
 
 func NewSignalProcessor(stopCroniter func(), versionString func() string) *SignalProcessor {
-    result := SignalProcessor{
-		stopCroniter: stopCroniter,
+	result := SignalProcessor{
+		stopCroniter:  stopCroniter,
 		versionString: versionString,
 	}
-	result.osIntSignals        = make(chan os.Signal, 1)
-    result.osQuitSignals       = make(chan os.Signal, 1)	
+	result.osIntSignals = make(chan os.Signal, 1)
+	result.osQuitSignals = make(chan os.Signal, 1)
 	return &result
 }
 
 func (sp *SignalProcessor) Start() {
-    signal.Notify(sp.osIntSignals, syscall.SIGINT, syscall.SIGTERM)
-    signal.Notify(sp.osQuitSignals, syscall.SIGQUIT)
-    go sp.interruptionHandler()
-    go sp.quitHandler()
+	signal.Notify(sp.osIntSignals, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sp.osQuitSignals, syscall.SIGQUIT)
+	go sp.interruptionHandler()
+	go sp.quitHandler()
 }
 
 func (sp *SignalProcessor) interruptionHandler() {
-    signal := <- sp.osIntSignals
+	signal := <-sp.osIntSignals
 
-    sp.logRuntimeInfo()
+	sp.logRuntimeInfo()
 	sp.stopCroniter()
 
-    log.Infof("STOPPING LOG-EXPORTER (received %+v signal)", signal)
-    fmt.Printf("\nstop exporter, %v\n", sp.versionString())
-    os.Exit(0)
+	log.Infof("STOPPING LOG-EXPORTER (received %+v signal)", signal)
+	fmt.Printf("\nstop exporter, %v\n", sp.versionString())
+	os.Exit(0)
 }
 
 func (sp *SignalProcessor) quitHandler() {
-    for {
-        signal := <- sp.osQuitSignals
-        log.Infof("Received %+v signal, printing thread dumps...", signal)
-        sp.logRuntimeInfo()
-    }
+	for {
+		signal := <-sp.osQuitSignals
+		log.Infof("Received %+v signal, printing thread dumps...", signal)
+		sp.logRuntimeInfo()
+	}
 }
 
 func (sp *SignalProcessor) logRuntimeInfo() {
-    buf := make([]byte, 1<<20)
-    stacklen := runtime.Stack(buf, true)
-    log.WithField(ec.FIELD, ec.LME_1607).Errorf("GOROUTINES DUMP: %s", buf[:stacklen])
+	buf := make([]byte, 1<<20)
+	stacklen := runtime.Stack(buf, true)
+	log.WithField(ec.FIELD, ec.LME_1607).Errorf("GOROUTINES DUMP: %s", buf[:stacklen])
 }

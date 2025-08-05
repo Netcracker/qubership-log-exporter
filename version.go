@@ -15,19 +15,19 @@
 package main
 
 import (
-    "fmt"
-    "runtime"
+	"fmt"
+	"runtime"
 )
 
 var (
-    Version   string
-    BuildDate string
-    Branch    string
-    Revision  string
-    GoVersion = runtime.Version()
-    Platform  = runtime.GOOS + "-" + runtime.GOARCH
+	Version   string
+	BuildDate string
+	Branch    string
+	Revision  string
+	GoVersion = runtime.Version()
+	Platform  = runtime.GOOS + "-" + runtime.GOARCH
 )
 
 func versionString() string {
-    return fmt.Sprintf("log-exporter version: %v (build date: %v, branch: %v, revision: %v, go version: %v, platform: %v)", Version, BuildDate, Branch, Revision, GoVersion, Platform)
+	return fmt.Sprintf("log-exporter version: %v (build date: %v, branch: %v, revision: %v, go version: %v, platform: %v)", Version, BuildDate, Branch, Revision, GoVersion, Platform)
 }

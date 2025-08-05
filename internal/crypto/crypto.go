@@ -15,51 +15,51 @@
 package crypto
 
 import (
-    "crypto/aes"
-    "crypto/cipher"
-    "crypto/rand"
-    "fmt"
-    "io"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"fmt"
+	"io"
 )
 
 type Crypto interface {
-    Encrypt(text []byte) (string, error)
-    Decrypt(text []byte) (string, error)
+	Encrypt(text []byte) (string, error)
+	Decrypt(text []byte) (string, error)
 }
 
 type aesCrypto struct {
-    gcm cipher.AEAD
+	gcm cipher.AEAD
 }
 
 func NewCrypto(key []byte) (Crypto, error) {
-    c, err := aes.NewCipher(key)
-    if err != nil {
-        return nil, err
-    }
-    gcm, err := cipher.NewGCM(c)
-    if err != nil {
-        return nil, err
-    }
-    return aesCrypto{gcm: gcm}, nil
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+	return aesCrypto{gcm: gcm}, nil
 }
 
 func (ac aesCrypto) Encrypt(text []byte) (string, error) {
-    nonce := make([]byte, ac.gcm.NonceSize())
-    if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-        return "", err
-    }
-    return string(ac.gcm.Seal(nonce, nonce, text, nil)), nil
+	nonce := make([]byte, ac.gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+	return string(ac.gcm.Seal(nonce, nonce, text, nil)), nil
 }
 
 func (ac aesCrypto) Decrypt(text []byte) (string, error) {
-    nonceSize := ac.gcm.NonceSize()
-    if len(text) < nonceSize {
-        return "", fmt.Errorf("crypto err: text (%v) len is less than nonce len (%v)", text, nonceSize)
-    }
-    nonce, text := text[:nonceSize], text[nonceSize:]
-    plaintext, err := ac.gcm.Open(nil, nonce, text, nil)
-    if err != nil {
-        return "", err
-    }
-    return string(plaintext), nil
+	nonceSize := ac.gcm.NonceSize()
+	if len(text) < nonceSize {
+		return "", fmt.Errorf("crypto err: text (%v) len is less than nonce len (%v)", text, nonceSize)
+	}
+	nonce, text := text[:nonceSize], text[nonceSize:]
+	plaintext, err := ac.gcm.Open(nil, nonce, text, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(plaintext), nil
 }

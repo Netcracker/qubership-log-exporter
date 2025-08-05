@@ -15,48 +15,49 @@
 package processors
 
 import (
-    "log_exporter/internal/config"
-    log "github.com/sirupsen/logrus"
-    dto "github.com/prometheus/client_model/go"
-    "strings"
+	"log_exporter/internal/config"
+	"strings"
+
+	dto "github.com/prometheus/client_model/go"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
-    namespace = "namespace"
-    pod = "pod"
-    container = "container"
+	namespace = "namespace"
+	pod       = "pod"
+	container = "container"
 )
 
 type PushProcessor struct {
-    appConfig *config.Config
+	appConfig *config.Config
 }
 
 func (p *PushProcessor) enrichWithCloudLabels(mfs []*dto.MetricFamily) {
-    if p.appConfig.General.DisablePushCloudLabels {
-        return
-    }
+	if p.appConfig.General.DisablePushCloudLabels {
+		return
+	}
 
-    namespaceValue := p.appConfig.General.NamespaceName
-    podValue := p.appConfig.General.PodName
-    containerValue := p.appConfig.General.ContainerName
-    labelNamespace := dto.LabelPair{Name: &namespace, Value: &namespaceValue}
-    labelPod := dto.LabelPair{Name: &pod, Value: &podValue}
-    labelContainer := dto.LabelPair{Name: &container, Value: &containerValue}
+	namespaceValue := p.appConfig.General.NamespaceName
+	podValue := p.appConfig.General.PodName
+	containerValue := p.appConfig.General.ContainerName
+	labelNamespace := dto.LabelPair{Name: &namespace, Value: &namespaceValue}
+	labelPod := dto.LabelPair{Name: &pod, Value: &podValue}
+	labelContainer := dto.LabelPair{Name: &container, Value: &containerValue}
 
-    pushCloudLabels := p.appConfig.General.PushCloudLabels
-    pushCloudLabelsList := make([]*dto.LabelPair, 0, len(pushCloudLabels))
-    for key, value := range pushCloudLabels {
-        keyClone := strings.Clone(key)
-        valueClone := strings.Clone(value)
-        lp := dto.LabelPair{Name: &keyClone, Value: &valueClone}
-        pushCloudLabelsList = append(pushCloudLabelsList, &lp)
-    }
+	pushCloudLabels := p.appConfig.General.PushCloudLabels
+	pushCloudLabelsList := make([]*dto.LabelPair, 0, len(pushCloudLabels))
+	for key, value := range pushCloudLabels {
+		keyClone := strings.Clone(key)
+		valueClone := strings.Clone(value)
+		lp := dto.LabelPair{Name: &keyClone, Value: &valueClone}
+		pushCloudLabelsList = append(pushCloudLabelsList, &lp)
+	}
 
-    log.Debugf("Cloud labels were found : %v : %v ; %v : %v ; %v : %v; pushCloudLabels : %+v", namespace, namespaceValue, pod, podValue, container, containerValue, pushCloudLabels)
-    for _, mf := range mfs {
-        for _, metric := range mf.Metric {
-            metric.Label = append(metric.Label, &labelNamespace, &labelPod, &labelContainer)
-            metric.Label = append(metric.Label, pushCloudLabelsList...)
-        }
-    }
+	log.Debugf("Cloud labels were found : %v : %v ; %v : %v ; %v : %v; pushCloudLabels : %+v", namespace, namespaceValue, pod, podValue, container, containerValue, pushCloudLabels)
+	for _, mf := range mfs {
+		for _, metric := range mf.Metric {
+			metric.Label = append(metric.Label, &labelNamespace, &labelPod, &labelContainer)
+			metric.Label = append(metric.Label, pushCloudLabelsList...)
+		}
+	}
 }

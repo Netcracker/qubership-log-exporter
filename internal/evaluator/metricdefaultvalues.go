@@ -15,66 +15,67 @@
 package evaluator
 
 import (
-    "strconv"
-    "math"
-    "log_exporter/internal/config"
-    ec "log_exporter/internal/utils/errorcodes"
-    log "github.com/sirupsen/logrus"
+	"log_exporter/internal/config"
+	ec "log_exporter/internal/utils/errorcodes"
+	"math"
+	"strconv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type MetricDefaultValues struct {
-    DefaultValue float64
+	DefaultValue float64
 }
 
-func CreateMetricDefaultValues(metricName string, defaultValue string) (*MetricDefaultValues) {
-    mdv := MetricDefaultValues{}
+func CreateMetricDefaultValues(metricName string, defaultValue string) *MetricDefaultValues {
+	mdv := MetricDefaultValues{}
 
-    val, err := strconv.ParseFloat(defaultValue, 64)
-    if err != nil {
-        if defaultValue == "" {
-            log.Debugf("Empty defaultValue received for metric %v; defaultValue is set to NaN", metricName)
-        } else {
-            log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing defaultValue %v for metric %v : %+v; defaultValue is set to NaN", defaultValue, metricName, err)
-        }
-        mdv.DefaultValue = math.NaN()
-    } else {
-        mdv.DefaultValue = val
-    }
+	val, err := strconv.ParseFloat(defaultValue, 64)
+	if err != nil {
+		if defaultValue == "" {
+			log.Debugf("Empty defaultValue received for metric %v; defaultValue is set to NaN", metricName)
+		} else {
+			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing defaultValue %v for metric %v : %+v; defaultValue is set to NaN", defaultValue, metricName, err)
+		}
+		mdv.DefaultValue = math.NaN()
+	} else {
+		mdv.DefaultValue = val
+	}
 
-    return &mdv
+	return &mdv
 }
 
 type MetricDefaultValuesRepository struct {
-    m map[string]*MetricDefaultValues
+	m map[string]*MetricDefaultValues
 }
 
-func CreateMetricDefaultValuesRepository(metricsMap map[string]*config.MetricsConfig) (*MetricDefaultValuesRepository) {
-    repo := MetricDefaultValuesRepository{}
-    repo.m = make(map[string]*MetricDefaultValues)
+func CreateMetricDefaultValuesRepository(metricsMap map[string]*config.MetricsConfig) *MetricDefaultValuesRepository {
+	repo := MetricDefaultValuesRepository{}
+	repo.m = make(map[string]*MetricDefaultValues)
 
-    for metricName, metricCfg := range metricsMap {
-        if len(metricCfg.Parameters) == 0 {
-            log.Debugf("DefaultValues : No parameters found for metric %v", metricName)
-            continue
-        }
-        defaultValue := metricCfg.Parameters["default-value"]
-        if defaultValue == "" {
-            log.Debugf("DefaultValues : No default values found for metric %v", metricName)
-            continue
-        }
-        mdv := CreateMetricDefaultValues(metricName, defaultValue)
-        repo.m[metricName] = mdv
-        log.Infof("Default values successfully created for metric %v : %+v", metricName, mdv)
-    }
+	for metricName, metricCfg := range metricsMap {
+		if len(metricCfg.Parameters) == 0 {
+			log.Debugf("DefaultValues : No parameters found for metric %v", metricName)
+			continue
+		}
+		defaultValue := metricCfg.Parameters["default-value"]
+		if defaultValue == "" {
+			log.Debugf("DefaultValues : No default values found for metric %v", metricName)
+			continue
+		}
+		mdv := CreateMetricDefaultValues(metricName, defaultValue)
+		repo.m[metricName] = mdv
+		log.Infof("Default values successfully created for metric %v : %+v", metricName, mdv)
+	}
 
-    return &repo
+	return &repo
 }
 
 func (repo *MetricDefaultValuesRepository) GetMetricDefaultValue(metric string) float64 {
-    if repo.m[metric] == nil {
-        log.Tracef("For metric %v DefaultValue is NaN", metric)
-        return math.NaN()
-    }
+	if repo.m[metric] == nil {
+		log.Tracef("For metric %v DefaultValue is NaN", metric)
+		return math.NaN()
+	}
 
-    return repo.m[metric].DefaultValue
+	return repo.m[metric].DefaultValue
 }

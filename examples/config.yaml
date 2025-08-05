@@ -12,18 +12,18 @@ datasources:
       dbtype: graylog
 metrics:
   graylog_int_count:
-    type: "counter" 
+    type: "counter"
     description: "Metric counts number of events"
     operation: "count"
     parameters:
       init-value: "0"
   graylog_int_count_by_int:
-    type: "counter" 
+    type: "counter"
     description: "Metric counts number of events"
     labels: ["integration"]
     operation: "count"
   graylog_int_count_by_int_by_status:
-    type: "counter" 
+    type: "counter"
     description: "Metric counts number of events"
     labels: ["integration", "httpStatusCode"]
     operation: "count"
@@ -207,4 +207,4 @@ queries:
         request-cache:
           size: 15
 flags:
-  disable-timestamp : true
+  disable-timestamp: true

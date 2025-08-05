@@ -1,4 +1,4 @@
-# Log-exporter &nbsp;–&nbsp; Logs-to-Metrics converter  
+# Log-exporter &nbsp;–&nbsp; Logs-to-Metrics converter
 
 [![Build](https://github.com/netcracker/qubership-log-exporter/actions/workflows/build.yml/badge.svg?style=flat-square)](https://github.com/netcracker/qubership-log-exporter/actions/workflows/build.yml)
 [![CodeQL](https://github.com/netcracker/qubership-log-exporter/actions/workflows/github-code-scanning/codeql/badge.svg?style=flat-square)](https://github.com/Netcracker/qubership-log-exporter/actions/workflows/github-code-scanning/codeql)
@@ -21,8 +21,8 @@
 ## 3. Requirements
 
 * Go ≥ 1.23 (for local builds) or Docker 20+
-* Optional sources / sinks  
-  * Graylog 3+, Loki, New Relic Insights API  
+* Optional sources / sinks
+  * Graylog 3+, Loki, New Relic Insights API
   * Victoria Metrics ≥ 1.68 / Prometheus ≥ 2.0 (remote-write compatible)
 * Kubernetes 1.20+ (Helm chart provided) – or run standalone binary / container
 
@@ -46,7 +46,7 @@ Kubernetes / OpenShift users:
 ```bash
 # Using local Helm chart
 helm install log-exporter ./charts/log-exporter \
-     -f values.yaml              # customise as needed
+     -f values.yaml              # customize as needed
 ```
 
 ## 5. Usage
@@ -64,7 +64,7 @@ Environment variables override secrets (e.g. `GRAYLOG_USER`, `VICTORIA_PASSWORD`
 
 ## 6. Configuration
 
-All behaviour is driven by a single YAML file.  
+All behavior is driven by a single YAML file.
 Sections: `datasources`, `exports`, `metrics`, `queries`, `flags`, `graylog-emulator`, `general`.
 
 Examples:
@@ -104,7 +104,7 @@ CI runs linting, unit tests and vulnerability scanning on every PR.
 
 ## 10. Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).  
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 Commit messages follow Conventional Commits; PR titles are linted automatically.
 
 ## 11. License

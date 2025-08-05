@@ -15,70 +15,71 @@
 package evaluator
 
 import (
-    "log_exporter/internal/utils"
-    log "github.com/sirupsen/logrus"
+	"log_exporter/internal/utils"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type MECondition struct { // Metric Evaluation conditions
-    subConditions []MESubCondition
+	subConditions []MESubCondition
 }
 
 type MESubCondition struct {
-    equConditions []EquCondition
+	equConditions []EquCondition
 }
 
 const EQU_COND_NAME string = "equ"
 
 type EquCondition struct {
-    FieldIndex int
-    FieldValue string
+	FieldIndex int
+	FieldValue string
 }
 
 func CreateMECondition(metric string, condConfig []map[string]map[string]string, header []string) *MECondition {
-    res := MECondition{}
+	res := MECondition{}
 
-    res.subConditions = make([]MESubCondition, 0, len(condConfig))
+	res.subConditions = make([]MESubCondition, 0, len(condConfig))
 
-    for i, cond := range condConfig {
-        log.Debugf("For metric %v processing condition %v ...", metric, i)
-        equCond := cond[EQU_COND_NAME]
-        if equCond == nil {
-            log.Debugf("For metric %v, condition %v equCond = nil", metric, i)
-            continue
-        }
-        mesc := MESubCondition{}
-        equConditions := make([]EquCondition, 0, len(equCond))
-        for fieldName, fieldValue := range equCond {
-            log.Debugf("For metric %v, condition %v processing equCond : fieldName %v, fieldValue %v", metric, i, fieldName, fieldValue)
-            equCondition := EquCondition{}
-            equCondition.FieldValue = fieldValue
-            equCondition.FieldIndex = utils.FindStringIndexInArray(header, fieldName)
-            equConditions = append(equConditions, equCondition)
-        }
-        log.Debugf("For metric %v, condition %v equConditions = %+v", metric, i, equConditions)
-        mesc.equConditions = equConditions
-        
-        res.subConditions = append(res.subConditions, mesc)
-    }
-    log.Debugf("For metric %v MECondition = %+v", metric, res)
+	for i, cond := range condConfig {
+		log.Debugf("For metric %v processing condition %v ...", metric, i)
+		equCond := cond[EQU_COND_NAME]
+		if equCond == nil {
+			log.Debugf("For metric %v, condition %v equCond = nil", metric, i)
+			continue
+		}
+		mesc := MESubCondition{}
+		equConditions := make([]EquCondition, 0, len(equCond))
+		for fieldName, fieldValue := range equCond {
+			log.Debugf("For metric %v, condition %v processing equCond : fieldName %v, fieldValue %v", metric, i, fieldName, fieldValue)
+			equCondition := EquCondition{}
+			equCondition.FieldValue = fieldValue
+			equCondition.FieldIndex = utils.FindStringIndexInArray(header, fieldName)
+			equConditions = append(equConditions, equCondition)
+		}
+		log.Debugf("For metric %v, condition %v equConditions = %+v", metric, i, equConditions)
+		mesc.equConditions = equConditions
 
-    return &res
+		res.subConditions = append(res.subConditions, mesc)
+	}
+	log.Debugf("For metric %v MECondition = %+v", metric, res)
+
+	return &res
 }
 
 func (c *MECondition) Apply(row []string) bool {
-    for _, subCondition := range c.subConditions {
-        if subCondition.apply(row) {
-            return true
-        }
-    }
-    return false
+	for _, subCondition := range c.subConditions {
+		if subCondition.apply(row) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *MESubCondition) apply(row []string) bool {
-    for _, equCondition := range c.equConditions {
-        if equCondition.FieldValue != row[equCondition.FieldIndex] {
-            return false
-        }
-    }
-    return true
+	for _, equCondition := range c.equConditions {
+		if equCondition.FieldValue != row[equCondition.FieldIndex] {
+			return false
+		}
+	}
+	return true
 }

@@ -21,7 +21,7 @@ CONFIG_MAP: '' # Full custom log-exporter yaml configuration, it overwrites comp
 LOG_LEVEL: 'INFO' # Log-exporter log-level, possible values : trace, debug, info, warn (warning), error, fatal, panic
 CONFIG_QUERIES: '' # Here additional queries could be specified. Out-of-box queries are not overwritten
 CONFIG_METRICS: '' # Here additional metrics could be specified. Out-of-box metrics are not overwritten
-PUSH_CLOUD_LABELS: # A map of additional labels to be added to all pushed metrics
+PUSH_CLOUD_LABELS: {} # A map of additional labels to be added to all pushed metrics
 MONITORING_NAMESPACE: 'platform-monitoring' # Parameter is used for evaluating the default values of VICTORIA_HOST, PROMRW_HOST, and MONITORING_EXT_MONITORING_QUERY_URL.
 MONITORING_TYPE: 'VictoriaDB' # Two values are supported : VictoriaDB (data is pushing plain-text to VMAgent) or Prometheus (data is pushing in promrw binary format)
 MONITORING_EXT_MONITORING_QUERY_URL: '' # The Victoria vmauth URL (port is usually 8427 or 8429) OR graphite-clickhouse service URL for PROMRW case.

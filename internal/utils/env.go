@@ -15,26 +15,27 @@
 package utils
 
 import (
-    "os"
-    "strconv"
-    ec "log_exporter/internal/utils/errorcodes"
-    log "github.com/sirupsen/logrus"
+	ec "log_exporter/internal/utils/errorcodes"
+	"os"
+	"strconv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func GetOctalUintEnvironmentVariable(name string, defaultValue uint32) uint32 {
-    valueStr := os.Getenv(name)
-    if valueStr == "" {
-        log.Infof("Environment variable %v is empty. Default value %o is used", name, defaultValue)
-        return defaultValue
-    }
-    result, err := strconv.ParseUint(valueStr, 8, 32)
+	valueStr := os.Getenv(name)
+	if valueStr == "" {
+		log.Infof("Environment variable %v is empty. Default value %o is used", name, defaultValue)
+		return defaultValue
+	}
+	result, err := strconv.ParseUint(valueStr, 8, 32)
 
-    if err != nil {
-        log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error trying to parse uint octal environment variable %v with value %v, default value %o is used instead. Error : %+v", name, valueStr, defaultValue, err)
-        return defaultValue
-    }
+	if err != nil {
+		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error trying to parse uint octal environment variable %v with value %v, default value %o is used instead. Error : %+v", name, valueStr, defaultValue, err)
+		return defaultValue
+	}
 
-    log.Infof("Environment variable %v with value %v parsed successfully as octal uint %o", name, valueStr, result)
+	log.Infof("Environment variable %v with value %v parsed successfully as octal uint %o", name, valueStr, result)
 
-    return uint32(result)
+	return uint32(result)
 }

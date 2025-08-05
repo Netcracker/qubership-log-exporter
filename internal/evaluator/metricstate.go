@@ -15,49 +15,50 @@
 package evaluator
 
 import (
-    "sync"
-    "github.com/prometheus/client_golang/prometheus"
+	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type MetricState struct {
-    sync.RWMutex
-    m map[string]prometheus.Labels
+	sync.RWMutex
+	m map[string]prometheus.Labels
 }
 
-func CreateMetricState() (*MetricState) {
-    ms := MetricState{}
-    ms.m = make(map[string]prometheus.Labels)
-    return &ms
+func CreateMetricState() *MetricState {
+	ms := MetricState{}
+	ms.m = make(map[string]prometheus.Labels)
+	return &ms
 }
 
 func (ms *MetricState) Initialize() {
-    ms.m = make(map[string]prometheus.Labels)
+	ms.m = make(map[string]prometheus.Labels)
 }
 
 func (ms *MetricState) Get(key string) prometheus.Labels {
-    ms.RLock()
-    defer ms.RUnlock()
-    return ms.m[key]
+	ms.RLock()
+	defer ms.RUnlock()
+	return ms.m[key]
 }
 
 func (ms *MetricState) Set(key string, val prometheus.Labels) {
-    ms.Lock()
-    defer ms.Unlock()
-    ms.m[key] = val
+	ms.Lock()
+	defer ms.Unlock()
+	ms.m[key] = val
 }
 
 func (ms *MetricState) GetAllKeys() []string {
-    ms.RLock()
-    defer ms.RUnlock()
-    result := make([]string, 0, len(ms.m))
-    for key := range ms.m {
-        result = append(result, key)
-    }
-    return result 
+	ms.RLock()
+	defer ms.RUnlock()
+	result := make([]string, 0, len(ms.m))
+	for key := range ms.m {
+		result = append(result, key)
+	}
+	return result
 }
 
 func (ms *MetricState) Size() int64 {
-    ms.RLock()
-    defer ms.RUnlock()
-    return int64(len(ms.m))
+	ms.RLock()
+	defer ms.RUnlock()
+	return int64(len(ms.m))
 }

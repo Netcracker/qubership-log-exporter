@@ -12,11 +12,11 @@ exports:
     port: "8083"
 metrics:
   graylog_messages_count_total:
-    type: "counter" 
+    type: "counter"
     description: "Metric counts total number of events"
     operation: "count"
   graylog_messages_count_total_by_host_by_container:
-    type: "counter" 
+    type: "counter"
     description: "Metric counts total number of events"
     labels: ["hostname"]
     label-field-map:
@@ -63,7 +63,7 @@ metrics:
         separator: ","
     threads: 1
   graylog_messages_gauge_total_by_host_by_container:
-    type: "gauge" 
+    type: "gauge"
     description: "Metric counts total number for the last minute"
     labels: ["hostname"]
     label-field-map:
@@ -122,7 +122,7 @@ queries:
     query_lag: "1m"
     interval: "1m"
     enrich:
-      - source-field: message 
+      - source-field: message
         regexp: '(?s).*Forward Request: .([A-Z]+) ([^ \?]+)[ \?].*Response: .([0-9])[0-9]{2} .*[^0-9]([0-9]+)ms.*' #multi-line regexp
         threads: 2
         dest-fields:

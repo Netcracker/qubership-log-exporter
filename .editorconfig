@@ -12,6 +12,9 @@ end_of_line = lf
 [{*.bat,*.cmd}]
 end_of_line = crlf
 
+[*.csv]
+insert_final_newline = false
+
 [*.go]
 # gofmt defaults to LF for all the platforms: https://github.com/golang/go/issues/16355
 end_of_line = lf

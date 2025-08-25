@@ -15,32 +15,32 @@
 package evaluator
 
 import (
-    "sync"
+	"sync"
 )
 
 type MonitoringState struct {
-    sync.RWMutex
-    m map[string]*MetricState
+	sync.RWMutex
+	m map[string]*MetricState
 }
 
-func CreateMonitoringState() (*MonitoringState) {
-    ms := MonitoringState{}
-    ms.m = make(map[string]*MetricState)
-    return &ms
+func CreateMonitoringState() *MonitoringState {
+	ms := MonitoringState{}
+	ms.m = make(map[string]*MetricState)
+	return &ms
 }
 
 func (ms *MonitoringState) Initialize() {
-    ms.m = make(map[string]*MetricState)
+	ms.m = make(map[string]*MetricState)
 }
 
 func (ms *MonitoringState) Get(key string) *MetricState {
-    ms.RLock()
-    defer ms.RUnlock()
-    return ms.m[key]
+	ms.RLock()
+	defer ms.RUnlock()
+	return ms.m[key]
 }
 
 func (ms *MonitoringState) Set(key string, val *MetricState) {
-    ms.Lock()
-    defer ms.Unlock()
-    ms.m[key] = val
+	ms.Lock()
+	defer ms.Unlock()
+	ms.m[key] = val
 }

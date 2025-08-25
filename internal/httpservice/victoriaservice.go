@@ -15,71 +15,77 @@
 package httpservice
 
 import (
-    "bytes"
-    "log_exporter/internal/config"
-    ec "log_exporter/internal/utils/errorcodes"
-    "fmt"
-    "io"
-    "net"
-    "net/http"
+	"bytes"
+	"fmt"
+	"io"
+	"log_exporter/internal/config"
+	ec "log_exporter/internal/utils/errorcodes"
+	"net"
+	"net/http"
 
-    log "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type VictoriaService struct {
-    exportConfig *config.ExportConfig
-    url          string
+	exportConfig *config.ExportConfig
+	url          string
 }
 
 func NewVictoriaService(exportConfig *config.ExportConfig) *VictoriaService {
-    victoriaService := VictoriaService{}
-    victoriaService.exportConfig = exportConfig
-    victoriaService.url = exportConfig.Host + exportConfig.Endpoint
-    log.Infof("VictoriaService : Initialization completed : url = %v, exportConfig = %+v", victoriaService.url, exportConfig.GetSafeCopy())
-    return &victoriaService
+	victoriaService := VictoriaService{}
+	victoriaService.exportConfig = exportConfig
+	victoriaService.url = exportConfig.Host + exportConfig.Endpoint
+	log.Infof("VictoriaService : Initialization completed : url = %v, exportConfig = %+v", victoriaService.url, exportConfig.GetSafeCopy())
+	return &victoriaService
 }
 
-func (v *VictoriaService) PushBuffer(buffer *bytes.Buffer, queryName string) (error, string) {
-    var transport http.RoundTripper = &http.Transport{
-        DialContext: (&net.Dialer{
-            Timeout: v.exportConfig.ConnectionTimeout,
-        }).DialContext,
-        TLSClientConfig: v.exportConfig.TlsConfig,
-    }
-    client := http.Client{
-        Transport: transport,
-        Timeout: v.exportConfig.ConnectionTimeout,
-    }
+func (v *VictoriaService) PushBuffer(buffer *bytes.Buffer, queryName string) (string, error) {
+	var transport http.RoundTripper = &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: v.exportConfig.ConnectionTimeout,
+		}).DialContext,
+		TLSClientConfig: v.exportConfig.TlsConfig,
+	}
+	client := http.Client{
+		Transport: transport,
+		Timeout:   v.exportConfig.ConnectionTimeout,
+	}
 
-    req, err := http.NewRequest("POST", v.url, buffer)
-    if err != nil {
-        return fmt.Errorf("VictoriaService : Error creating POST request to Victoria : %+v", err), ec.LME_7110
-    }
-    if v.exportConfig.User != "" {
-        req.SetBasicAuth(v.exportConfig.User, v.exportConfig.Password)
-    }
-    resp, err := client.Do(req)
-    if err != nil {
-        return fmt.Errorf("VictoriaService : Error accessing %v : %+v", v.url, err), ec.LME_7110
-    }
+	req, err := http.NewRequest("POST", v.url, buffer)
+	if err != nil {
+		return ec.LME_7110, fmt.Errorf("VictoriaService : Error creating POST request to Victoria : %+v", err)
+	}
+	if v.exportConfig.User != "" {
+		req.SetBasicAuth(v.exportConfig.User, v.exportConfig.Password)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ec.LME_7110, fmt.Errorf("VictoriaService : Error accessing %v : %+v", v.url, err)
+	}
 
-    if resp == nil {
-        return fmt.Errorf("VictoriaService : From %v nil response is received", v.url), ec.LME_7110
-    } else if resp.Body == nil {
-        log.Debugf("VictoriaService : From %v response with nil body is received", v.url)
-    } else {
-        defer resp.Body.Close()
-    }
-    log.Infof("VictoriaService : From %v for query %v response received : %v", v.url, queryName, resp.Status)
-    if resp.StatusCode >= 400 {
-        return fmt.Errorf("VictoriaService : From %v response status code %v is received", v.url, resp.StatusCode), ec.LME_7111
-    }
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        log.WithField(ec.FIELD, ec.LME_7113).Errorf("VictoriaService : From %v : Error reading victoria response body : %+v", v.url, err)
-    }
-    result := string(body)
-    log.Debugf("VictoriaService : From %v received body with length : %v", v.url, len(result))
-    log.Tracef("VictoriaService : From %v received response body : %v", v.url, result)
-    return nil, ""
+	if resp == nil {
+		return ec.LME_7110, fmt.Errorf("VictoriaService : From %v nil response is received", v.url)
+	} else if resp.Body == nil {
+		log.Debugf("VictoriaService : From %v response with nil body is received", v.url)
+	} else {
+		if resp.Body != nil {
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					log.Errorf("VictoriaService : Error closing response body : %+v", err)
+				}
+			}()
+		}
+	}
+	log.Infof("VictoriaService : From %v for query %v response received : %v", v.url, queryName, resp.Status)
+	if resp.StatusCode >= 400 {
+		return ec.LME_7111, fmt.Errorf("VictoriaService : From %v response status code %v is received", v.url, resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.WithField(ec.FIELD, ec.LME_7113).Errorf("VictoriaService : From %v : Error reading victoria response body : %+v", v.url, err)
+	}
+	result := string(body)
+	log.Debugf("VictoriaService : From %v received body with length : %v", v.url, len(result))
+	log.Tracef("VictoriaService : From %v received response body : %v", v.url, result)
+	return "", nil
 }

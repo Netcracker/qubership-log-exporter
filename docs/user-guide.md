@@ -1,25 +1,26 @@
 # Logs2Metrics (LME) User Guide
 
-- [Overview of Log Exporter](#overview-of-log-exporter)
-- [REST API](#rest-api)
-- [Command Line Arguments](#command-line-arguments)
-- [Environment Variables](#environment-variables)
-- [LME Self-metrics](#lme-self-metrics)
-- [YAML Configuration](#yaml-configuration)
-  - [Base](#base)
-  - [Datasources Section](#datasources-section)
-  - [Exports Section](#exports-section)
-  - [Metrics Section](#metrics-section)
-  - [Queries Section](#queries-section)
-  - [Flags Section](#flags-section)
-  - [Graylog Emulator Section](#graylog-emulator-section)
-  - [General Section](#general-section)
-- [YAML Configuration Example](#yaml-configuration-example)
+* [Logs2Metrics (LME) User Guide](#logs2metrics-lme-user-guide)
+  * [Overview of Log Exporter](#overview-of-log-exporter)
+  * [REST API](#rest-api)
+  * [Command Line Arguments](#command-line-arguments)
+  * [Environment Variables](#environment-variables)
+  * [LME Self-metrics](#lme-self-metrics)
+  * [YAML Configuration](#yaml-configuration)
+    * [Base](#base)
+    * [Datasources Section](#datasources-section)
+    * [Exports Section](#exports-section)
+    * [Metrics Section](#metrics-section)
+    * [Queries Section](#queries-section)
+    * [Flags Section](#flags-section)
+    * [Graylog Emulator Section](#graylog-emulator-section)
+    * [General Section](#general-section)
+  * [YAML Configuration Example](#yaml-configuration-example)
 
 ## Overview of Log Exporter
 
 The log-exporter (or Logs-to-Metrics-exporter, LME) tool is designed to evaluate Prometheus metrics on the basis of the records retrieved from the Graylog server, New Relic, or Loki via API. The log-exporter can count logged events, evaluate average or sum values for numerical graylog fields or the duration between logged events and provide results as Prometheus metrics of different types (counter, gauge, histogram). The log-exporter can enrich the received data with the use of regular expressions with templates and/or json-path. Any field can be used as a label for the metric. Log-exporter can push metrics to Victoria or Prometheus remote-write or metrics could be pulled from the `/metrics` endpoint by Prometheus, Victoria or any other consumer.
-	
+
 ## REST API
 
 * `/metrics` returns all collected metrics.
@@ -37,7 +38,7 @@ You can specify the following command-line arguments to configure the log-export
 | key-path                  | string | Path to the key for DSN encryption                 |                    |
 | listen-address            | string | The address to listen (port) for HTTP requests     | :8080              |
 | log-archivation           | bool   | Archiving rotated logs                             | true               |
-| log-format                | string | Log messages in JSON (json, cloud, text)           | text               |
+| log-format                | string | Log messages in JSON (`json`, `cloud`, `text`)     | text               |
 | log-level                 | string | Log level                                          | debug              |
 | log-max-age               | int    | Set maximum age of log backups in days             | 90                 |
 | log-max-backups           | int    | Set maximum number of log backups                  | 20                 |
@@ -67,24 +68,25 @@ You can specify the following environment variables to configure the log-exporte
 
 Log-exporter provides self-metrics in Prometheus format. Supported metrics are all default Go application metrics and the following.
 
-| Name                         | Type      | Description                                                         |
-|------------------------------|-----------|---------------------------------------------------------------------|
-| data_exporter_cache_size     | Gauge     | Log-exporter cache size (number of entries)                         |
-| graylog_response_error_count | Counter   | Count of errors during request to graylog and error responses       |
-| query_latency                | Histogram | Graylog request execution latency by query                          |
-| metric_evaluation_latency    | Histogram | Metric evaluation latency by metric                                 |
-| enrich_evaluation_latency    | Histogram | Enrich evaluation latency by query, enrich_index                    |
-| graylog_response_size        | Histogram | Graylog response size distribution by query                         |
-| regex_matched                | Counter   | Count of regexps have been matched by query, enrich_index           |
-| regex_not_matched            | Counter   | Count of regexps have not been matched by query, enrich_index       |
-| panic_recovery_count         | Counter   | Count of panics have been recovered by query, process               |
-| queue_size                   | Gauge     | Size of queues inside log-exporter application by query, queue      |
+| Name                         | Type      | Description                                                               |
+|------------------------------|-----------|---------------------------------------------------------------------------|
+| data_exporter_cache_size     | Gauge     | Log-exporter cache size (number of entries)                               |
+| graylog_response_error_count | Counter   | Count of errors during request to graylog and error responses             |
+| query_latency                | Histogram | Graylog request execution latency by query                                |
+| metric_evaluation_latency    | Histogram | Metric evaluation latency by metric                                       |
+| enrich_evaluation_latency    | Histogram | Enrich evaluation latency by query, enrich_index                          |
+| graylog_response_size        | Histogram | Graylog response size distribution by query                               |
+| regex_matched                | Counter   | Count of regular expressions have been matched by query, enrich_index     |
+| regex_not_matched            | Counter   | Count of regular expressions have not been matched by query, enrich_index |
+| panic_recovery_count         | Counter   | Count of panics have been recovered by query, process                     |
+| queue_size                   | Gauge     | Size of queues inside log-exporter application by query, queue            |
 
 ## YAML Configuration
 
 ### Base
 
 Log-exporter configuration contains the following root sections:
+
 * `apiVersion` (`optional`) - Contains configuration version, for example 1.0.0.0. If the version is lower than the  currently minimal supported version (currently minimal supported version is 1), log-exporter does not start.
 * `kind` (`optional`) - Reserved for Kubernetes. Currently not used.
 * `datasources` (`required`) - Contains a map of datasources to which the log-exporter is connected and from which it extracts metrics. The key of the map is the arbitrary datasource name (string); the value of the map is the datasource description. Currently, only one datasource is supported; if you need to collect metrics from several datasources, you can use several log-exporter instances and aggregate metrics on the prom-proxy or Prometheus level. For more information, see the [Datasources Section](#datasources-section).
@@ -96,29 +98,33 @@ Log-exporter configuration contains the following root sections:
 * `general` (`optional`) - Contains the log-exporter general properties, which are not relevant to any section above. For more information, see [General Section](#general-section).
 
 ### Datasources Section
+
 This section contains a map in which the string key is the datasource name and the value has the following properties:
-* `host` (`required`) - Specifies the Graylog host endpoint in the `protocol`://`ip_or_hostname`:`port` format. Example: http://<area>127.0.0.1:9000
+
+* `host` (`required`) - Specifies the Graylog host endpoint in the `protocol`://`ip_or_hostname`:`port` format. Example: `http://127.0.0.1:9000`
 * `user` (`required`) - Specifies the Graylog username; the same user can be used in Graylog UI.
 * `password` (`optional`) - Specifies the password for the Graylog user.
 * `type` (`optional`) - Specifies the type of the datasource, possible values are "graylog" and "newrelic". The default value is "graylog".
 * `labels` (`optional`) - Contains a map with the key string and the value string of static labels and their values, which are automatically added to all log-exporter metrics.
 * `connection-timeout` (`optional`) - Specifies the timeout for the TCP connection. The default value is "30s".
-* `tls-insecure-skip-verify` (`optional`) - Controls whether a client verifies the server's certificate chain and host name. The default value is "false".
+* `tls-insecure-skip-verify` (`optional`) - Controls whether a client verifies the server's certificate chain and hostname. The default value is "false".
 * `tls-cert-file` (`optional`) - Specifies the path to the TLS certificate file. This property is empty by default.
 * `tls-key-file` (`optional`) - Specifies the path to the TLS key file. This property is empty by default.
 * `tls-ca-cert-file` (`optional`) - Specifies the path to the TLS CA file. This property is empty by default.
 
 ### Exports Section
+
 This section contains a map in which the string key is the export name and the value has the following properties:
+
 * `strategy` (`optional`) - Contains a string. The possible values are "push" (default value) and "pull".
 * `consumer` (`optional`) - Contains a string. The possible values are "victoria-vmagent" (default value) and "prometheus-remote-write". It is needed only for the push strategy. This parameter is used to distinguish metric destination services for the push strategy. If a consumer is "victoria-vmagent", the log-exporter writes metrics plain-text (this format is usually called "Prometheus exposition format") on the provided vmagent endpoint of the Victoria Metrics, which usually is `/api/v1/import/prometheus`. If a consumer is "prometheus-remote-write", the log-exporter writes metrics in Prometheus remote-write binary format on the provided Prometheus remote-write endpoint, which usually is `/api/v1/write`.
-* `port` (`optional`) - Contains a port number that is used for exposing metrics in the pull startegy. This parameter is needed only for the pull strategy.
+* `port` (`optional`) - Contains a port number that is used for exposing metrics in the pull strategy. This parameter is needed only for the pull strategy.
 * `host` (`optional`) - Specifies the destination host in the `protocol`://`ip_or_hostname`:`port` format. Usually it is victoria-vmagent host (if consumer is "victoria-vmagent") or carbon-clickhouse host (if consumer is "prometheus-remote-write"). This parameter is needed only for the push strategy.
 * `endpoint` (`optional`) - Specifies the destination endpoint. For the "victoria-vmagent" consumer, it is usually `/api/v1/import/prometheus`; for the "prometheus-remote-write" consumer, it is usually `/api/v1/write`. This parameter is needed only for the push strategy.
 * `user` (`optional`) - Specifies the Basic auth user for the host. This parameter is needed only for the push strategy. For the "prometheus-remote-write" consumer, the parameter is usually not needed.
 * `password` (`optional`) - Specifies the password for the Basic auth user. This parameter is needed only for the push strategy. For the "prometheus-remote-write" consumer, the parameter is usually not needed.
 * `connection-timeout` (`optional`) - Specifies the timeout for the TCP connection. The default value is "30s". This parameter is used only by the push strategy.
-* `tls-insecure-skip-verify` (`optional`) - Controls whether a client verifies the server's certificate chain and host name. The default value is "false". This parameter is used only by the push strategy.
+* `tls-insecure-skip-verify` (`optional`) - Controls whether a client verifies the server's certificate chain and hostname. The default value is "false". This parameter is used only by the push strategy.
 * `tls-cert-file` (`optional`) - Specifies the path to TLS certificate file. This parameter is empty by default. It is used only by the push strategy.
 * `tls-key-file` (`optional`) - Specifies the path to TLS key file. This parameter is empty by default. It is used only by the push strategy.
 * `tls-ca-cert-file` (`optional`) - Specifies the path to TLS CA file. This parameter is empty by default. It is used only by the push strategy.
@@ -129,20 +135,22 @@ This section contains a map in which the string key is the export name and the v
   * *connection-timeout* (optional), *tls-insecure-skip-verify (optional), *tls-cert-file* (optional), *tls-key-file* (optional), and *tls-ca-cert-file* (optional) are also available to configure the connection to the last timestamp host.
 
 ### Metrics Section
+
 This section contains a map in which the string key is a metric name and the value has the following properties:
+
 * `type` (`required`) - Specifies the metric type; supported types are __gauge__, __counter__, and __histogram__. The metric type is present in the Prometheus endpoint output in the TYPE section.
 * `description` (`optional`) - Provides the metric description; description is present in the Prometheus endpoint output in the HELP section.
 * `operation` (`required`) - Specifies the metric evaluation algorithm together with the `type` field. Currently, the following operations are supported:
   * __count__ - Counts the number of entries returned by the query. If labels are defined, counting is performed separately for each possible label-value combination. If the metric type is __counter__, the metric value is summed up with the previous metric value. If the metric type is __gauge__, the metric value is equal to the number of entries returned by the last query. The __histogram__ metric type is not supported for this operation. No special parameters are required (see section parameters below).
   * __duration__ - Evaluates the duration between events logged in Graylog, for example integration calls, HTTP calls, or any other processes. For proper duration metric functioning, correlated records for the start and end processes (or integration call request and response) must be logged in Graylog. If labels are defined, evaluation is performed separately for each label-value combination possible. If the metric type is __counter__, the value is summed up with the current average duration value of the metric for the specific label-value combination. If the metric type is __gauge__, the metric value is equal to the current average duration value of the metric for the specific label-value combination. If the metric type is __histogram__, all durations are distributed between buckets defined in the `buckets` section. The sum and count series are also evaluated accordingly. Duration metrics use the following parameters:   *value-field*, *time_field*, *time_format*, *message_type_field*, *message_type_request*, *message_type_response*, *correlation_id_field*, *cache*, *cache-update* (see the parameters section).
-  * __value__ - In case of __counter__ and __gauge__ types, evaluates the average number of __value-field__ field defined in the parameters section for the last executed query. If labels are defined, evaluation is performed separately for each possible label-value combination. If the metric type is __counter__, the value is summed up with the current value of the metric. If the metric type is __gauge__, the metric value is equal to the average returned by the last query. If the metric type is __histogram__, all number values for the _value-field_ field are distributed between buckets defined in the `buckets` section. The sum and count series are also evaluated accordingly. This metric requires the *value-field* parameter (see parameters section).
+  * __value__ - In case of __counter__ and __gauge__ types, evaluates the average number of __value-field__ field defined in the parameters section for the last executed query. If labels are defined, evaluation is performed separately for each possible label-value combination. If the metric type is __counter__, the value is summed up with the current value of the metric. If the metric type is __gauge__, the metric value is equal to the average returned by the last query. If the metric type is __histogram__, all number values for the *value-field* field are distributed between buckets defined in the `buckets` section. The sum and count series are also evaluated accordingly. This metric requires the *value-field* parameter (see parameters section).
 * `labels` (`optional`) - Specifies the list of metric label names (list of strings) in addition to the static labels, defined in the Database section. Values of the labels are evaluated on the basis of query execution results and equal to the values of the field with the name equal to the label name. Query for the metric evaluation must return Graylog fields with the same names as label names. The list may be empty.
 * `label-field-map` (`optional`) - Contains a map with the string key for the label name and the string value for the field name. The map is used to define the label if its name is not equal to the name of the field where label values are taken from.
 * `multi-value-fields` (`optional`) - Contains a list of multi-value field configurations. Multi-value fields are now supported only for the metrics of the type counter. Multi-value fields allow to increment several metric series of the metric for different values of the label *label-name* after processing of the single datasource log record. Label values for incrementing are stored in the *field-name* field as a string, in which label values are separated by a *separator* (usually the separator is ","). A multi-value field configuration contains the following properties:
   * *field-name* (required) - The Graylog field name where label values separated by a *separator* are stored.
   * *label-name* (required) - The name of the Prometheus label for which several label values can be incremented.
   * *separator* (optional) - The separator for the value of the *field-name* field. The default value is ",".
-* `expected-labels` (`optional`) - Contains the list of cartesians. Each cartesian is a map, where key is a label name and value is the list of expected label values. For each label name present in the labels section, the expected label values list size must be greater than zero; the number of map entries for each cartesian must be equal to the labels list size. If there are cartesians that do not satisfy these conditions, the whole expected-labels section is ignored. Expected labels can be useful together with the *default-value* and *init-value* parameters because metric values for all possible combinations of expected labels are initiated (for counters and histograms) and reset (for gauges) in accordance with the values of these parameters.
+* `expected-labels` (`optional`) - Contains a list of mappings. Each mapping is a map where the key is a label name and the value is a list of expected label values. For each label name present in the labels section, the list of expected label values must contain at least one item; the number of map entries in each mapping must be equal to the size of the labels list. If any mapping does not satisfy these conditions, the entire expected-labels section is ignored. Expected labels are useful in conjunction with the default-value and init-value parameters because metric values for all possible combinations of expected labels are initialized (for counters and histograms) and reset (for gauges) according to these parameters.
 * `id-field` (`optional`) - Specifies the string name of the field that contains the unique identifier. The option is valid only for the count operation. If the option is specified, the metric is evaluated in the unique counter mode, to which the following logic applies: The LME counts the record with the certain id-field value only once for the metric (if `id-field-strategy` is set to "metric") or for the label-values combination (if `id-field-strategy` is set to "label"). The records with the value of the id-field which encountered more than once are skipped and do not increase the value of the metric for the strategies above.
 * `id-field-strategy` (`optional`) - Specifies the string that defines the strategy for the unique counter mode. The possible values are "metric" and "label". The default strategy is "label". The parameter is valid only for the counter operation and only if `id-field` parameter is specified for the metric.
 * `id-field-ttl` (`optional`) - Specifies the time-to-live value for unique identifiers stored in the cache. It must be an integer value. It specifies the minimum number of successive Graylog requests for which the identifier is stored in the cache and can be used. The default value is "60". The parameter is valid only for the counter operation and only if `id-field` parameter is specified for the metric.
@@ -159,12 +167,13 @@ This section contains a map in which the string key is a metric name and the val
   * *message_type_request* (optional for duration operation) - The Graylog field value for a request (start event) in *message_type_field*. The default value is "request".
   * *message_type_response* (optional for duration operation) - The Graylog field value for a response (end event) in *message_type_field*. The default value is "response".
   * *correlation_id_field* (required for duration operation) - The Graylog field name for correlation ID. Each record with the *message_type_response* value in *message_type_field* must have a pair with the same value in *correlation_id_field* and *message_type_request* value in *message_type_field*. Different request-response pairs must have different values in correlation ID.
-  * *cache* (optional for duration operation) - The cache name that is used by the duration metric. Cache stores the request times by their correlation_id for previous Graylog calls. Duration metrics can work without cache; however, it is not recommended because some request-response pairs may be lost for evaluation if the request and response were received by the log-exporter in different Graylog record batches. 
+  * *cache* (optional for duration operation) - The cache name that is used by the duration metric. Cache stores the request times by their correlation_id for previous Graylog calls. Duration metrics can work without cache; however, it is not recommended because some request-response pairs may be lost for evaluation if the request and response were received by the log-exporter in different Graylog record batches.
   * *cache-update* (optional for duration operation) - Boolean value, "true" or "false". The default value is "false". This value must be set to "true" for one of the metrics, which is using the cache. Several metrics could use the same cache, but only one metric should update it.
   * *init-value* (optional) - Init value for counters (any non-negative number or "NaN"). Histograms are initialized with 0 if init-value is not empty. Other values for initialization are not supported.
   * *default-value* (optional) - The default value for gauge. This value is used for label values for which query is not returning now, but the value is returned before by a query or labels are present in the expected labels set. The value can be any number value or "NaN". The default value is "NaN".
 
 ### Queries Section
+
 This section contains a map in which string key is a query name and value has the following properties:
 
 * `datasources` (`optional`) - Contains the list of datasources to which a query is applied. Currently not used because log-exporter is connected to one datasource only.
@@ -182,22 +191,22 @@ This section contains a map in which string key is a query name and value has th
 * `last-timestamp-endpoint` (`optional`) - Specifies the endpoint for the last timestamp extraction for the metrics, evaluated by the query. Usually also contains the query for the last timestamp extraction as a request parameter after the endpoint.
 * `last-timestamp-json-path` (`optional`) - Specifies the JSON path to the timestamp in the response from the last timestamp service.
 * `max-history-lookup` (`optional`) - Limits the amount of history data processed by the log-exporter.
-* `enrich` (`optional`) - Contains a list of enriched configurations. Enrich configuration allows to calculate additional fields on the basis of other fields. Enriches are calculated one by one, in the same order as it is declared in the configuration file. So, each enrich can use fields originated by Graylog or calculated by one of the prevous enriches. New fields could be later used for metrics evaluation the same way as the fields originated from Graylog. Each enrich configuration may contain the following parameters:
-  * *source-field* (required) - The name of the field, which is used as the data source for evaluation of the new field(s).
-  * *json-path* (optional) - The parameter sets the json-path to the required json element. The parameter can be set only if the source-field data format is json. If both `json-path` and `regexp` are set, the source field data is procesed by json-path, then the result of the json-path operation is processed by regexp. If regexp is not set, the result of the json-path operation that is being applied is used as a value for the destination field. If the source field value is not a parsable json, the result of the json-path operation is "JSON_NOT_PARSED"; if there is an error during the application of json-path, the result of the operation is "JSONPATH_ERROR".
-  * *regexp* (required) - The parameter sets the regexp string, which is applied to the value of the source-field. Regexp should contain the capturing groups in parentheses. Captured values are used for evaluating the new fields.
-  * *threads* (optional) - The number of threads used for enrich evaluation. By default, one thread is used.
-  * *dest-fields* (required) - The list of the destination fields configuration. Each element of the list has the following parameters:
-    * *field-name* (required) - The name of the destination field. The name must be unique. The names of the other Graylog fields and destination fields that are used in the query configuration must be different.
-    * *template* (required) - Template for the field value extraction. Template usually contains variables like __${1}__ and __${2}__ inside to refer to submatches found by the regexp in the field value.
-    * *default-value* (optional) - The default value is used as the field value if the field value is not matched to the regexp. If the default value is not set, the "NOT_MATCHED" value is used. 
-    * *uri-processing* (optional) - Special configuration for uri processing. Can be defined if the destination field value is supposed to be a uri with IDs (or uuids) inside. To decrease metric cardinality, IDs should be replaced inside uri with pre-defined values. Uri processing configuration contains the following fields:
-      * *uuid-replacer* (optional) - Contains a replacement string for the uri path elements, which are valid uuid. If the value is empty, uuid path elements are present in the destination field value as is.
-      * *id-digit-quantity* (required, if id-replacer is present) - Contains the limit value for ID path elements. If a path element contains less digits inside, this path element is considered as non-id path element and is displayed in the destination field as is. If a path element contains more than or equal number of digits inside, this path element is considered as ID path element and is replaced by *id-replacer* in the destination field value.
-      * *id-replacer* (optional) - Contains a replacement string for path elements, which contains not less than `id-digit-quantity` digits inside (path elements that contain not less than `id-digit-quantity` are considered as id). If the value is empty, id path elements are displayed in the destination field as is.
-      * *number-replacer* (optional) - Contains a replacement string for uri path elements that are integer numbers (negative or positive). If the value is empty, number path elements are displayed in the destination field as is.
-      * *fsm-replacer* (optional) - Contains a replacement string for path elements that have scored more than `fsm-replacer-limit` points during [Finite State Machine Analysis](img/FSM.PNG). If the value is empty, ID path elements are not analyzed by Finite State Machine. Note that Finite State Machine Analysis also uses other heuristics like the existence of at least one digit in the path element and the length of the path element.
-      * *fsm-replacer-limit* (required, if fsm-replacer is present) - Contains fsm replacer limit value for path elements. If a path element has scored less points during Finite State Machine Analysis (see *fsm-replacer* field), this path element is considered as a non-id path element and is displayed in the destination field as is. If the path has scored more than or equal points during Finite State Machine Analysis, this path element is considered as an ID path element and is replaced by *fsm-replacer* in the destination field value.
+* `enrich` (`optional`) - Contains a list of enriched configurations. Enrich configuration allows to calculate additional fields on the basis of other fields. Enriches are calculated one by one, in the same order as it is declared in the configuration file. So, each enrich can use fields originated by Graylog or calculated by one of the previous enriches. New fields could be later used for metrics evaluation the same way as the fields originated from Graylog. Each enrich configuration may contain the following parameters:
+  * `source-field` (required) - The name of the field, which is used as the data source for evaluation of the new field(s).
+  * `json-path` (optional) - The parameter sets the json-path to the required JSON element. The parameter can be set only if the source-field data format is JSON. If both `json-path` and `regexp` are set, the source field data is processed by json-path, then the result of the json-path operation is processed by regular expression. If `regexp` is not set, the result of the json-path operation that is being applied is used as a value for the destination field. If the source field value is not a parsable JSON, the result of the json-path operation is "JSON_NOT_PARSED"; if there is an error during the application of json-path, the result of the operation is "JSONPATH_ERROR".
+  * `regexp` (required) - The parameter sets the regular expression string, which is applied to the value of the source-field. Regular expression should contain the capturing groups in parentheses. Captured values are used for evaluating the new fields.
+  * `threads` (optional) - The number of threads used for enrich evaluation. By default, one thread is used.
+  * `dest-fields` (required) - The list of the destination fields configuration. Each element of the list has the following parameters:
+    * `field-name` (required) - The name of the destination field. The name must be unique. The names of the other Graylog fields and destination fields that are used in the query configuration must be different.
+    * `template` (required) - Template for the field value extraction. Template usually contains variables like __${1}__ and __${2}__ which refer to submatches captured by the regular expression in the field value.
+    * `default-value` (optional) - The default value is used as the field value if the field value is not matched to the regular expression. If the default value is not set, the "NOT_MATCHED" value is used.
+    * `uri-processing` (optional) - Special configuration for URI processing. Can be defined if the destination field value is supposed to be a URI with IDs (or uuids) inside. To decrease metric cardinality, IDs should be replaced inside URI with predefined values. URI processing configuration contains the following fields:
+      * `uuid-replacer` (optional) - Contains a replacement string for the URI path elements, which are valid uuid. If the value is empty, uuid path elements are present in the destination field value as is.
+      * `id-digit-quantity` (required, if id-replacer is present) - Contains the limit value for ID path elements. If a path element contains less digits inside, this path element is considered as non-id path element and is displayed in the destination field as is. If a path element contains more than or equal number of digits inside, this path element is considered as ID path element and is replaced by *id-replacer* in the destination field value.
+      * `id-replacer` (optional) - Contains a replacement string for path elements, which contains not less than `id-digit-quantity` digits inside (path elements that contain not less than `id-digit-quantity` are considered as ID). If the value is empty, ID path elements are displayed in the destination field as is.
+      * `number-replacer` (optional) - Contains a replacement string for URI path elements that are integer numbers (negative or positive). If the value is empty, number path elements are displayed in the destination field as is.
+      * `fsm-replacer` (optional) - Contains a replacement string for path elements that have scored more than `fsm-replacer-limit` points during [Finite State Machine Analysis](img/FSM.PNG). If the value is empty, ID path elements are not analyzed by Finite State Machine. Note that Finite State Machine Analysis also uses other heuristics like the existence of at least one digit in the path element and the length of the path element.
+      * `fsm-replacer-limit` (required, if fsm-replacer is present) - Contains fsm replacer limit value for path elements. If a path element has scored less points during Finite State Machine Analysis (see *fsm-replacer* field), this path element is considered as a non-id path element and is displayed in the destination field as is. If the path has scored more than or equal points during Finite State Machine Analysis, this path element is considered as an ID path element and is replaced by *fsm-replacer* in the destination field value.
 * `caches` (`optional`) - Contains a map of caches. The cache is used only by duration metrics. The key of the map is the arbitrary name for the cache. The value of the map has the following parameters:
   * *size* (required) - Number of batches the cache supports. The oldest batches are removed from the cache.
 
@@ -206,17 +215,23 @@ You can see in the following figure how the *croniter*, *timerange*, and *query_
   ![Log-exporter timeline](img/LE_timeline_colour.PNG)
 
 ### Flags Section
+
 This section contains a map for reloading the log-exporter startup arguments. The following flags are supported for reloading:
+
 * `croniter-precision` (`optional`) - Specifies the croniter precision. The possible values are "second" and "minute". The default value is "second".
 
 ### Graylog Emulator Section
+
 This section contains the LME graylog emulator options. The section is optional and usually used only on dev-environments. The following parameters are supported:
+
 * `source-files` (`optional`) - Contains the list of the paths to the CSV-files. The CSV files must contain a valid Graylog output. The LME Graylog emulator reads the files one by one in the round-robin way and publishes the data from the files on the specified `endpoint`. Each HTTP-call of the endpoint returns the content of the next CSV file in the list. The LME Graylog emulator exposes the data on the same port as the LME exposes metrics (see datasources section, parameter `host`)
 * `endpoint` (`optional`) - The endpoint on which the Graylog emulator exposes the Graylog emulator output. The default value is "/api/views/search/messages", which is the default Graylog API endpoint.
 * `data` (`optional`) - Contains a list of Graylog emulator responses. Each entry of the list must contain a valid Graylog output. The LME Graylog emulator reads the list elements one by one in the round-robin way and publish the data from the list on the specified `endpoint`. This parameter is equal to the `source-files` parameter, but the `data` section allows to specify the Graylog emulator data directly in the configmap. If this section is defined, the files from the `source-files` section are ignored.
 
 ### General Section
+
 This section contains a map of general log-exporter parameters. The following parameters are supported:
+
 * `gm-queue-self-mon-size` (`optional`) - Sets up the size of GM queue for self-metrics. The default value is "60".
 * `disable-push-cloud-labels` (`optional`) - Disables cloud labels (namespace, pod and container; values for the labels are the names of the namespace, the container, and the pod where the log-exporter instance is running) in push mode. The default value is false, that is, labels are enabled by default.
 * `push-cloud-labels` (`optional`) - Sets up the map where key is a string label name and value is a string label value. All defined labels here are added to all pushing metrics. Pulling metrics remain the same. If there is a need to add labels to all metrics, pulling and pushing, use the datasources > labels section.
@@ -228,10 +243,10 @@ This section contains a map of general log-exporter parameters. The following pa
 * `push-retry-period` (`optional`) - Specifies the time period between retries for the push retry mechanism. The default value is "5s".
 
 ## YAML Configuration Example
-<details>
+
 Configuration:
 
-```
+```yaml
         apiVersion: "1.0.0.0"
         kind: cloud
         datasources:
@@ -261,11 +276,11 @@ Configuration:
               tls-insecure-skip-verify: true
         metrics:
           graylog_messages_count_total:
-            type: "counter" 
+            type: "counter"
             description: "Metric counts total number of events"
             operation: "count"
           graylog_messages_count_total_by_host_by_container:
-            type: "counter" 
+            type: "counter"
             description: "Metric counts total number of events"
             labels: ["hostname"]
             label-field-map:
@@ -273,7 +288,7 @@ Configuration:
             operation: "count"
             threads: 2
           graylog_messages_gauge_total_by_host_by_container:
-            type: "gauge" 
+            type: "gauge"
             description: "Metric counts total number for the last minute"
             labels: ["hostname"]
             label-field-map:
@@ -301,7 +316,7 @@ Configuration:
               query_lag: "1m"
               interval: "1m"
               enrich:
-                - source-field: message 
+                - source-field: message
                   regexp: '(?s).*Forward Request: .([A-Z]+) ([^ \?]+)[ \?].*Response: .([0-9])[0-9]{2} .*[^0-9]([0-9]+)ms.*' #multi-line regexp
                   threads: 2
                   dest-fields:
@@ -321,7 +336,7 @@ Configuration:
                       default-value: "NOT_MATCHED_TO_REGEXP"
                     - field-name: duration
                       template: "${4}"
-                      default-value: "NaN"          
+                      default-value: "NaN"
                 - source-field: path
                   threads: 2
                   regexp: '[^ \?]*\/(v[0-9])\/[^ \?]+'
@@ -341,9 +356,9 @@ Configuration:
         #  disable-timestamp : true
 ```
 
-    Metrics:
+Metrics:
 
-```
+```prometheus
         # HELP envoy_duration Envoy duration
         # TYPE envoy_duration histogram
         envoy_duration_bucket{container_name="container_name_1",dbtype="graylog",method="GET",node="node_name_1",path="/api/v1/path/to/endpoint",service="v1",status="2xx",le="0"} 0 1671453240000
@@ -584,14 +599,12 @@ Configuration:
         queue_size{dbtype="graylog",query_name="query1",queue_name="GDQueue"} 0 1671453310779
         queue_size{dbtype="graylog",query_name="query1",queue_name="GMQueue"} 0 1671453310779
         queue_size{dbtype="graylog",query_name="query1",queue_name="GTSQueue"} 0 1671453310779
-        # HELP regex_matched Count of regexps have been matched per query, enrich_index
+        # HELP regex_matched Count of regular expressions have been matched per query, enrich_index
         # TYPE regex_matched counter
         regex_matched{dbtype="graylog",enrich_index="0",query_name="query1"} 10556 1671453310779
         regex_matched{dbtype="graylog",enrich_index="1",query_name="query1"} 2293 1671453310779
-        # HELP regex_not_matched Count of regexps have been not matched per query, enrich_index
+        # HELP regex_not_matched Count of regular expressions have been not matched per query, enrich_index
         # TYPE regex_not_matched counter
         regex_not_matched{dbtype="graylog",enrich_index="0",query_name="query1"} 144 1671453310779
         regex_not_matched{dbtype="graylog",enrich_index="1",query_name="query1"} 382 1671453310779
 ```
-</details>
-

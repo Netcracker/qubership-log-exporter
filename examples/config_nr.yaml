@@ -129,4 +129,4 @@ queries:
       croniter: '* * * * *'
       query_lag: "60s"
 flags:
-  disable-timestamp : true
+  disable-timestamp: true

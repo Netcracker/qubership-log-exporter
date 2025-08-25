@@ -15,62 +15,62 @@
 package evaluator
 
 import (
-    "sort"
-    "time"
+	"sort"
+	"time"
 )
 
 type MetricEvaluationResult struct {
-    Series []MetricSeries
-    ChildMetrics map[string]*MetricEvaluationResult
+	Series       []MetricSeries
+	ChildMetrics map[string]*MetricEvaluationResult
 }
 
 func CreateMetricEvaluationResult(expectedSeriesDimension int64) *MetricEvaluationResult {
-    mer := MetricEvaluationResult{}
-    mer.Series = make([]MetricSeries, 0, expectedSeriesDimension)
-    return &mer
+	mer := MetricEvaluationResult{}
+	mer.Series = make([]MetricSeries, 0, expectedSeriesDimension)
+	return &mer
 }
 
 type MetricSeries struct {
-    Labels map[string]string
-    Average float64
-    Sum float64
-    Count uint64
-    Timestamp *time.Time
-    HistValue *HistogramMetricValue
+	Labels    map[string]string
+	Average   float64
+	Sum       float64
+	Count     uint64
+	Timestamp *time.Time
+	HistValue *HistogramMetricValue
 }
 
 func CreateMetricSeries(labels map[string]string) MetricSeries {
-    ms := MetricSeries{}
-    ms.Labels = labels
-    return ms
+	ms := MetricSeries{}
+	ms.Labels = labels
+	return ms
 }
 
 type HistogramMetricValue struct {
-    Sum float64
-    Cnt uint64
-    Buckets map[float64]uint64
-    BucketsList []float64
+	Sum         float64
+	Cnt         uint64
+	Buckets     map[float64]uint64
+	BucketsList []float64
 }
 
 func CreateHistogramMetricValue(bucketsList []float64) *HistogramMetricValue {
-    histMetricValue := HistogramMetricValue{}
-    histMetricValue.Sum = 0
-    histMetricValue.Cnt = 0
-    sort.Float64s(bucketsList)
-    histMetricValue.BucketsList = bucketsList
-    histMetricValue.Buckets = make(map[float64]uint64, len(bucketsList))
-    for _, v := range bucketsList {
-        histMetricValue.Buckets[v] = 0
-    }
-    return &histMetricValue
+	histMetricValue := HistogramMetricValue{}
+	histMetricValue.Sum = 0
+	histMetricValue.Cnt = 0
+	sort.Float64s(bucketsList)
+	histMetricValue.BucketsList = bucketsList
+	histMetricValue.Buckets = make(map[float64]uint64, len(bucketsList))
+	for _, v := range bucketsList {
+		histMetricValue.Buckets[v] = 0
+	}
+	return &histMetricValue
 }
 
 func (h *HistogramMetricValue) Observe(value float64) {
-    h.Sum += value
-    h.Cnt ++
-    for _,v := range h.BucketsList {
-        if (value <= v) {
-            h.Buckets[v]++
-        }
-    }
+	h.Sum += value
+	h.Cnt++
+	for _, v := range h.BucketsList {
+		if value <= v {
+			h.Buckets[v]++
+		}
+	}
 }

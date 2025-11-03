@@ -18,5 +18,5 @@ RUN go mod download -x
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -o logexporter .
 
-FROM alpine:3.22.1
+FROM alpine:3.22.2
 COPY --from=builder --chown=10001:0 /workspace/logexporter /logexporter

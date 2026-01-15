@@ -57,7 +57,9 @@ func TestCustomCounter_Add(t *testing.T) {
 
 	metric := <-ch
 	var m dto.Metric
-	metric.Write(&m)
+	if err := metric.Write(&m); err != nil {
+		t.Fatalf("Failed to write metric: %v", err)
+	}
 
 	if *m.Counter.Value != 8.0 {
 		t.Errorf("Expected counter value 8.0, got %f", *m.Counter.Value)
@@ -80,7 +82,9 @@ func TestCustomCounter_AddWithTimestamp(t *testing.T) {
 
 	metric := <-ch
 	var m dto.Metric
-	metric.Write(&m)
+	if err := metric.Write(&m); err != nil {
+		t.Fatalf("Failed to write metric: %v", err)
+	}
 
 	if m.TimestampMs == nil {
 		t.Error("Expected timestamp to be set")
@@ -137,7 +141,9 @@ func TestCustomGauge_Set(t *testing.T) {
 
 	metric := <-ch
 	var m dto.Metric
-	metric.Write(&m)
+	if err := metric.Write(&m); err != nil {
+		t.Fatalf("Failed to write metric: %v", err)
+	}
 
 	if *m.Gauge.Value != 15.5 {
 		t.Errorf("Expected gauge value 15.5, got %f", *m.Gauge.Value)
@@ -160,7 +166,9 @@ func TestCustomGauge_SetWithTimestamp(t *testing.T) {
 
 	metric := <-ch
 	var m dto.Metric
-	metric.Write(&m)
+	if err := metric.Write(&m); err != nil {
+		t.Fatalf("Failed to write metric: %v", err)
+	}
 
 	if m.TimestampMs == nil {
 		t.Error("Expected timestamp to be set")
@@ -221,7 +229,9 @@ func TestCustomHistogram_Observe(t *testing.T) {
 
 	metric := <-ch
 	var m dto.Metric
-	metric.Write(&m)
+	if err := metric.Write(&m); err != nil {
+		t.Fatalf("Failed to write metric: %v", err)
+	}
 
 	if *m.Histogram.SampleCount != 3 {
 		t.Errorf("Expected sample count 3, got %d", *m.Histogram.SampleCount)
@@ -250,7 +260,9 @@ func TestCustomHistogram_ObserveSingle(t *testing.T) {
 
 	metric := <-ch
 	var m dto.Metric
-	metric.Write(&m)
+	if err := metric.Write(&m); err != nil {
+		t.Fatalf("Failed to write metric: %v", err)
+	}
 
 	if *m.Histogram.SampleCount != 2 {
 		t.Errorf("Expected sample count 2, got %d", *m.Histogram.SampleCount)
@@ -277,7 +289,9 @@ func TestCustomHistogram_ObserveWithTimestamp(t *testing.T) {
 
 	metric := <-ch
 	var m dto.Metric
-	metric.Write(&m)
+	if err := metric.Write(&m); err != nil {
+		t.Fatalf("Failed to write metric: %v", err)
+	}
 
 	if m.TimestampMs == nil {
 		t.Error("Expected timestamp to be set")

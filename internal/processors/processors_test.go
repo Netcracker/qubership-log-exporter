@@ -42,9 +42,9 @@ func TestSignalProcessorCreation(t *testing.T) {
 
 	processor := NewSignalProcessor(stopFunc, versionFunc)
 
-	// Basic assertions
+	// Basic assertions - check for nil first to satisfy staticcheck
 	if processor == nil {
-		t.Error("Expected SignalProcessor to be created")
+		t.Fatal("Expected SignalProcessor to be created")
 	}
 
 	if processor.stopCroniter == nil {
@@ -81,7 +81,7 @@ func TestNewSelfMonSchedulerProcessor(t *testing.T) {
 	processor := NewSelfMonSchedulerProcessor(appConfig, gmQueue, croniter, registry)
 
 	if processor == nil {
-		t.Error("Expected SelfMonSchedulerProcessor to be created")
+		t.Fatal("Expected SelfMonSchedulerProcessor to be created")
 	}
 
 	if processor.appConfig != appConfig {
@@ -212,6 +212,10 @@ func TestPushProcessorCreation(t *testing.T) {
 
 	processor := &PushProcessor{
 		appConfig: appConfig,
+	}
+
+	if processor == nil {
+		t.Fatal("Expected PushProcessor to be created")
 	}
 
 	if processor.appConfig != appConfig {

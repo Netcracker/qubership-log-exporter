@@ -275,8 +275,14 @@ func TestMaxFloat64InSlice(t *testing.T) {
 
 func TestGetOctalUintEnvironmentVariable(t *testing.T) {
 	// Test with valid octal value
-	os.Setenv("TEST_VAR", "755")
-	defer os.Unsetenv("TEST_VAR")
+	if err := os.Setenv("TEST_VAR", "755"); err != nil {
+		t.Fatalf("Failed to set environment variable: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("TEST_VAR"); err != nil {
+			t.Errorf("Failed to unset environment variable: %v", err)
+		}
+	}()
 
 	result := GetOctalUintEnvironmentVariable("TEST_VAR", 644)
 	if result != 493 { // 755 octal = 493 decimal
@@ -284,14 +290,18 @@ func TestGetOctalUintEnvironmentVariable(t *testing.T) {
 	}
 
 	// Test with invalid value (should use default)
-	os.Setenv("TEST_VAR", "invalid")
+	if err := os.Setenv("TEST_VAR", "invalid"); err != nil {
+		t.Fatalf("Failed to set environment variable: %v", err)
+	}
 	result = GetOctalUintEnvironmentVariable("TEST_VAR", 644)
 	if result != 644 {
 		t.Errorf("Expected default 644, got %d", result)
 	}
 
 	// Test with empty value (should use default)
-	os.Setenv("TEST_VAR", "")
+	if err := os.Setenv("TEST_VAR", ""); err != nil {
+		t.Fatalf("Failed to set environment variable: %v", err)
+	}
 	result = GetOctalUintEnvironmentVariable("TEST_VAR", 755)
 	if result != 755 {
 		t.Errorf("Expected default 755, got %d", result)

@@ -214,10 +214,6 @@ func TestPushProcessorCreation(t *testing.T) {
 		appConfig: appConfig,
 	}
 
-	if processor == nil {
-		t.Fatal("Expected PushProcessor to be created")
-	}
-
 	if processor.appConfig != appConfig {
 		t.Error("Expected appConfig to be set")
 	}

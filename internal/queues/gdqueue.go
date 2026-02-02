@@ -66,6 +66,10 @@ func (gdq *GDQueue) Put(queryName string, graylogData *GraylogData) {
 
 func (gdq *GDQueue) Get(queryName string) (*GraylogData, bool) {
 	c := gdq.graylogDataByQuery[queryName]
+	if c == nil {
+		log.WithField(ec.FIELD, ec.LME_1621).Errorf("GDQueue Get : Attempting to get graylogData from channel for non-existent query %v", queryName)
+		return nil, false
+	}
 	result, ok := <-c
 	size := len(c)
 	if !ok {
@@ -81,6 +85,10 @@ func (gdq *GDQueue) Get(queryName string) (*GraylogData, bool) {
 
 func (gdq *GDQueue) CloseChan(queryName string) {
 	c := gdq.graylogDataByQuery[queryName]
+	if c == nil {
+		log.WithField(ec.FIELD, ec.LME_1621).Errorf("GDQueue CloseChan : Attempting to close channel for non-existent query %v", queryName)
+		return
+	}
 	log.Infof("GDQueue CloseChan : For query %v chan is closed", queryName)
 	close(c)
 }

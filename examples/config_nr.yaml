@@ -1,7 +1,7 @@
 datasources:
   newrelic:
     type: newrelic
-    host: <newrelic_url>
+    host: https://api.newrelic.com
     user: <numeric_user_id>
     password: <newrelic_query_key>
     labels:

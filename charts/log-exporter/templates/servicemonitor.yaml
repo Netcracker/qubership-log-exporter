@@ -4,12 +4,12 @@ kind: ServiceMonitor
 metadata:
   namespace: {{ .Values.NAMESPACE }}
   labels:
-    name: '{{ .Values.SERVICE_NAME }}'
     app.kubernetes.io/component: monitoring
     app.kubernetes.io/managed-by: monitoring-operator
-    app.kubernetes.io/name: {{ .Values.SERVICE_NAME }}-monitor
-    k8s-app: {{ .Values.SERVICE_NAME }}-monitor
-  name: {{ .Values.SERVICE_NAME }}-monitor
+    app.kubernetes.io/name: {{ include "log-exporter.fullname" . }}-monitor
+    app.kubernetes.io/part-of: {{ default (include "log-exporter.fullname" .) .Values.PART_OF | quote }}
+    k8s-app: {{ include "log-exporter.fullname" . }}-monitor
+  name: {{ include "log-exporter.fullname" . }}-monitor
 spec:
   endpoints:
   - port: "http"
@@ -20,7 +20,7 @@ spec:
   jobLabel: k8s-app
   selector:
     matchLabels:
-      app: {{ .Values.LME_APPLICATION_NAME }}
+      app: {{ include "log-exporter.fullname" . | quote }}
   namespaceSelector:
     matchNames:
       - {{ .Values.NAMESPACE }}

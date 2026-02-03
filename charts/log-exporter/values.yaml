@@ -49,6 +49,9 @@ NAMESPACE: '' # TO_BE_REPLACED
 imagePullSecrets: []  # Only pods which provide own keys can access the private registry.
 
 # Technical helm parameters
+fullnameOverride: '' # Overrides the computed fullname. When set, used for all resource names and app.kubernetes.io/name.
+nameOverride: '' # Overrides the chart name used in fullname when LME_APPLICATION_NAME is not set.
+PART_OF: '' # Overrides app.kubernetes.io/part-of label. Defaults to fullname when empty.
 LME_APPLICATION_NAME: 'log-exporter' # LME Application name. The parameter is required only if several log-exporter instances need to be installed in the same namespace (for example, one instance is communicating with the graylog, and the other is communicating with the New Relic)
 LME_LTS_RETRY_COUNT: "5" # Number of attempts to extract the last timestemp from Prometheus. If the value is 0, the last timestamp is not extracted; if the value is 1, retry is disabled.
 LME_LTS_RETRY_PERIOD: "10s" # The time period between attempts to extract the last timestemp from Prometheus or Victoria.

@@ -2,17 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    name: '{{ .Values.SERVICE_NAME }}'
-    app: '{{ .Values.LME_APPLICATION_NAME }}'
-    app.kubernetes.io/name: '{{ .Values.SERVICE_NAME }}'
-    app.kubernetes.io/instance: '{{ cat (coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME) "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}'
-    app.kubernetes.io/version: '{{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}'
-    app.kubernetes.io/component: backend
-    app.kubernetes.io/part-of: '{{ .Values.LME_APPLICATION_NAME }}'
-    app.kubernetes.io/managed-by: saasDeployer
+    app: {{ include "log-exporter.fullname" . | quote }}
     app_name: monitoring
     app.kubernetes.io/technology: 'go'
-  name: {{ .Values.LME_APPLICATION_NAME }}
+    {{- include "log-exporter.defaultLabels" . | nindent 4 }}
+  name: {{ include "log-exporter.fullname" . }}
   namespace: {{ .Values.NAMESPACE }}
 spec:
   strategy:
@@ -42,17 +36,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Values.LME_APPLICATION_NAME }}
+      app: {{ include "log-exporter.fullname" . | quote }}
   template:
     metadata:
       labels:
-        name: '{{ coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME }}'
-        app: '{{ .Values.LME_APPLICATION_NAME }}'
-        app.kubernetes.io/name: '{{ coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME }}'
-        app.kubernetes.io/instance: '{{ cat (coalesce .Values.DEPLOYMENT_RESOURCE_NAME .Values.SERVICE_NAME) "-" .Values.NAMESPACE | nospace | trunc 63 | trimSuffix "-" }}'
-        app.kubernetes.io/version: '{{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}'
-        app.kubernetes.io/component: backend
-        app.kubernetes.io/part-of: '{{ .Values.LME_APPLICATION_NAME }}'
+        app: {{ include "log-exporter.fullname" . | quote }}
+        {{- include "log-exporter.defaultLabels" . | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
@@ -109,73 +98,73 @@ spec:
         - name: GRAYLOG_USER
           valueFrom:
             secretKeyRef:
-              name: log-exporter-graylog-credentials
+              name: {{ include "log-exporter.fullname" . }}-graylog-credentials
               key: GRAYLOG_USER
               optional: true
         - name: GRAYLOG_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: log-exporter-graylog-credentials
+              name: {{ include "log-exporter.fullname" . }}-graylog-credentials
               key: GRAYLOG_PASSWORD
               optional: true
         - name: NEWRELIC_ACCOUNT_ID
           valueFrom:
             secretKeyRef:
-              name: log-exporter-newrelic-credentials
+              name: {{ include "log-exporter.fullname" . }}-newrelic-credentials
               key: NEWRELIC_ACCOUNT_ID
               optional: true
         - name: NEWRELIC_X_QUERY_KEY
           valueFrom:
             secretKeyRef:
-              name: log-exporter-newrelic-credentials
+              name: {{ include "log-exporter.fullname" . }}-newrelic-credentials
               key: NEWRELIC_X_QUERY_KEY
               optional: true
         - name: LOKI_USER
           valueFrom:
             secretKeyRef:
-              name: log-exporter-loki-credentials
+              name: {{ include "log-exporter.fullname" . }}-loki-credentials
               key: LOKI_USER
               optional: true
         - name: LOKI_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: log-exporter-loki-credentials
+              name: {{ include "log-exporter.fullname" . }}-loki-credentials
               key: LOKI_PASSWORD
               optional: true
         - name: VICTORIA_USER
           valueFrom:
             secretKeyRef:
-              name: log-exporter-victoria-credentials
+              name: {{ include "log-exporter.fullname" . }}-victoria-credentials
               key: VICTORIA_USER
               optional: true
         - name: VICTORIA_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: log-exporter-victoria-credentials
+              name: {{ include "log-exporter.fullname" . }}-victoria-credentials
               key: VICTORIA_PASSWORD
               optional: true
         - name: PROMRW_USER
           valueFrom:
             secretKeyRef:
-              name: log-exporter-promrw-credentials
+              name: {{ include "log-exporter.fullname" . }}-promrw-credentials
               key: PROMRW_USER
               optional: true
         - name: PROMRW_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: log-exporter-promrw-credentials
+              name: {{ include "log-exporter.fullname" . }}-promrw-credentials
               key: PROMRW_PASSWORD
               optional: true
         - name: LAST_TIMESTAMP_USER
           valueFrom:
             secretKeyRef:
-              name: log-exporter-last-timestamp-credentials
+              name: {{ include "log-exporter.fullname" . }}-last-timestamp-credentials
               key: LAST_TIMESTAMP_USER
               optional: true
         - name: LAST_TIMESTAMP_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: log-exporter-last-timestamp-credentials
+              name: {{ include "log-exporter.fullname" . }}-last-timestamp-credentials
               key: LAST_TIMESTAMP_PASSWORD
               optional: true
         - name: CONSUL_URL
@@ -208,7 +197,7 @@ spec:
       volumes:
       - configMap:
           defaultMode: 420
-          name: {{ .Values.LME_APPLICATION_NAME }}-config
+          name: {{ include "log-exporter.fullname" . }}-config
         name: vol-log-exporter
       {{- if .Values.READONLY_CONTAINER_FILE_SYSTEM_ENABLED }}
       - name: tmp

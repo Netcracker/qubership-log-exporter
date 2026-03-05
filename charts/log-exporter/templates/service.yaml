@@ -1,14 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.LME_APPLICATION_NAME }}
+  name: {{ include "log-exporter.fullname" . }}
   namespace: {{ .Values.NAMESPACE }}
   labels:
-    name: {{ .Values.SERVICE_NAME }}
-    app: {{ .Values.LME_APPLICATION_NAME }}
-    app.kubernetes.io/name: {{ .Values.LME_APPLICATION_NAME }}
-    app.kubernetes.io/part-of: '{{ .Values.LME_APPLICATION_NAME }}'
-    app.kubernetes.io/managed-by: saasDeployer
+    app: {{ include "log-exporter.fullname" . | quote }}
+    {{- include "log-exporter.commonLabels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -17,4 +14,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: {{ .Values.LME_APPLICATION_NAME }}
+    app: {{ include "log-exporter.fullname" . | quote }}

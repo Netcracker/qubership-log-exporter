@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.26.1-alpine3.22 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.3-alpine3.22 AS builder
 ARG BUILDPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
@@ -18,5 +18,5 @@ RUN go mod download -x
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -o logexporter .
 
-FROM alpine:3.23.3
+FROM alpine:3.23.4
 COPY --from=builder --chown=10001:0 /workspace/logexporter /logexporter

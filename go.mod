@@ -1,6 +1,7 @@
 module log_exporter
 
 go 1.26
+toolchain go1.26.4
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1

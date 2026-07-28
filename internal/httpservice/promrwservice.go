@@ -30,9 +30,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/prompb"
 	log "github.com/sirupsen/logrus"
-
-	// Skip staticcheck (SA1019) for next line, as github.com/prometheus/prometheus/prompb uses "gogoproto/gogo.proto": https://github.com/prometheus/prometheus/issues/11908
-	"github.com/golang/protobuf/proto" //nolint:staticcheck
 )
 
 type PromRWService struct {
@@ -50,7 +47,7 @@ func NewPromWRService(exportConfig *config.ExportConfig) *PromRWService {
 }
 
 func (p *PromRWService) WriteMetrics(metricFamilies []*dto.MetricFamily, queryName string) (string, error) {
-	protoBuffer, err := proto.Marshal(&prompb.WriteRequest{
+	protoBuffer, err := marshalWriteRequest(&prompb.WriteRequest{
 		Timeseries: p.getProtoData(metricFamilies),
 	})
 	if err != nil {
@@ -102,6 +99,10 @@ func (p *PromRWService) WriteMetrics(metricFamilies []*dto.MetricFamily, queryNa
 
 	log.Infof("PromRWService : For query %v metrics were pushed successfully, got status %v", queryName, resp.Status)
 	return "", nil
+}
+
+func marshalWriteRequest(request *prompb.WriteRequest) ([]byte, error) {
+	return request.Marshal()
 }
 
 func (p *PromRWService) getProtoData(metricFamilies []*dto.MetricFamily) []prompb.TimeSeries {

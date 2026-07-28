@@ -16,7 +16,33 @@ package httpservice
 
 import (
 	"testing"
+
+	"github.com/prometheus/prometheus/prompb"
 )
+
+func TestMarshalWriteRequest(t *testing.T) {
+	request := &prompb.WriteRequest{
+		Timeseries: []prompb.TimeSeries{
+			{
+				Labels:  []prompb.Label{{Name: "__name__", Value: "test_metric"}},
+				Samples: []prompb.Sample{{Value: 42, Timestamp: 123}},
+			},
+		},
+	}
+
+	data, err := marshalWriteRequest(request)
+	if err != nil {
+		t.Fatalf("marshalWriteRequest() error = %v", err)
+	}
+
+	var decoded prompb.WriteRequest
+	if err := decoded.Unmarshal(data); err != nil {
+		t.Fatalf("unmarshal generated payload: %v", err)
+	}
+	if got := decoded.Timeseries[0].Samples[0].Value; got != 42 {
+		t.Fatalf("decoded sample value = %v, want 42", got)
+	}
+}
 
 func TestProcessCsv_ValidData(t *testing.T) {
 	csvData := `field1,field2,field3

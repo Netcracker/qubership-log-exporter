@@ -15,8 +15,76 @@
 package httpservice
 
 import (
+	"io"
+	"log_exporter/internal/config"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/golang/snappy"
+	"github.com/prometheus/prometheus/prompb"
 )
+
+func TestMarshalWriteRequest(t *testing.T) {
+	request := &prompb.WriteRequest{
+		Timeseries: []prompb.TimeSeries{
+			{
+				Labels:  []prompb.Label{{Name: "__name__", Value: "test_metric"}},
+				Samples: []prompb.Sample{{Value: 42, Timestamp: 123}},
+			},
+		},
+	}
+
+	data, err := marshalWriteRequest(request)
+	if err != nil {
+		t.Fatalf("marshalWriteRequest() error = %v", err)
+	}
+
+	var decoded prompb.WriteRequest
+	if err := decoded.Unmarshal(data); err != nil {
+		t.Fatalf("unmarshal generated payload: %v", err)
+	}
+	if got := decoded.Timeseries[0].Samples[0].Value; got != 42 {
+		t.Fatalf("decoded sample value = %v, want 42", got)
+	}
+}
+
+func TestWriteMetricsSendsGeneratedProtobufPayload(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		compressed, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+			http.Error(w, "cannot read request", http.StatusInternalServerError)
+			return
+		}
+		payload, err := snappy.Decode(nil, compressed)
+		if err != nil {
+			t.Errorf("decode snappy payload: %v", err)
+			http.Error(w, "cannot decode request", http.StatusBadRequest)
+			return
+		}
+		var request prompb.WriteRequest
+		if err := request.Unmarshal(payload); err != nil {
+			t.Errorf("unmarshal remote-write request: %v", err)
+			http.Error(w, "cannot unmarshal request", http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	service := NewPromWRService(&config.ExportConfig{
+		TLSHostConfig: config.TLSHostConfig{
+			Host:              server.URL,
+			ConnectionTimeout: time.Second,
+		},
+	})
+
+	if code, err := service.WriteMetrics(nil, "test_query"); err != nil {
+		t.Fatalf("WriteMetrics() error code = %q, error = %v", code, err)
+	}
+}
 
 func TestProcessCsv_ValidData(t *testing.T) {
 	csvData := `field1,field2,field3

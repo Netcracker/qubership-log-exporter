@@ -4,7 +4,6 @@ go 1.26
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
-	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v1.0.0
 	github.com/hashicorp/consul/api v1.34.3
 	github.com/hashicorp/consul/api/v2 v2.0.0

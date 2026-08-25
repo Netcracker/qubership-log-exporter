@@ -66,7 +66,7 @@ func (l *LastTimestampService) GetLastTimestampUnixTime(qName string, queryConfi
 	if jsonPath == "" {
 		return time.Now().Unix(), false, ec.LME_8102, fmt.Errorf("LastTimestampService : Can not evaluate last timestamp, jsonPath is not defined, please check query config or last-timestamp-host config")
 	}
-	log.Infof("LastTimestampService : For query %v lastTimestampURL : %v , jsonPath : %v ", qName, lastTimestampURL, jsonPath)
+	log.WithFields(log.Fields{"query": qName, "last_timestamp_url": lastTimestampURL, "json_path": jsonPath}).Info("LastTimestampService : Last timestamp URL and json path are resolved")
 
 	var transport http.RoundTripper = &http.Transport{
 		DialContext: (&net.Dialer{
@@ -95,19 +95,19 @@ func (l *LastTimestampService) GetLastTimestampUnixTime(qName string, queryConfi
 	if resp.Body != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.Errorf("LastTimestampService : Error closing response body : %+v", err)
+				log.WithField("error", err).Error("LastTimestampService : Error closing response body")
 			}
 		}()
 	}
 
-	log.Infof("LastTimestampService : For query %v TSDB Response : %+v", qName, resp)
+	log.WithFields(log.Fields{"query": qName, "response": resp}).Info("LastTimestampService : TSDB response is received")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return time.Now().Unix(), true, ec.LME_7130, fmt.Errorf("LastTimestampService : Can not evaluate last timestamp, error reading response body : %+v", err)
 	}
 	data := string(body)
-	log.Infof("LastTimestampService : For query %v Response body length : %v", qName, len(data))
-	log.Infof("LastTimestampService : For query %v Response body : %v", qName, data)
+	log.WithFields(log.Fields{"query": qName, "data_count": len(data)}).Info("LastTimestampService : Response body is received")
+	log.WithFields(log.Fields{"query": qName, "data": data}).Info("LastTimestampService : Response body is received")
 	if resp.StatusCode >= 400 {
 		return time.Now().Unix(), true, ec.LME_7131, fmt.Errorf("LastTimestampService : Can not evaluate last timestamp, error status code received : %v", resp.StatusCode)
 	}
@@ -117,7 +117,7 @@ func (l *LastTimestampService) GetLastTimestampUnixTime(qName string, queryConfi
 	}
 	result, err := jsonpath.Get(jsonPath, jsonData)
 
-	log.Infof("LastTimestampService : For query %v for jsonpath %v result = %+v, type = %v", qName, jsonPath, result, reflect.TypeOf(result))
+	log.WithFields(log.Fields{"query": qName, "json_path": jsonPath, "result": result, "result_type": reflect.TypeOf(result)}).Info("LastTimestampService : Jsonpath extraction is completed")
 
 	if err != nil {
 		return time.Now().Unix(), true, ec.LME_7133, fmt.Errorf("LastTimestampService : Can not evaluate last timestamp, error during JsonPathLookup : %+v", err)
@@ -129,13 +129,13 @@ func (l *LastTimestampService) GetLastTimestampUnixTime(qName string, queryConfi
 		if res == "" {
 			return time.Now().Unix(), false, ec.LME_7134, fmt.Errorf("LastTimestampService : There is no data (empty string) on the provided jsonpath in TSDB response. Probably metric for the last timestamp evaluation for the query %v is configured for the first time on the environment, if it is the case, ignore this message", qName)
 		}
-		log.Infof("LastTimestampService : For query %v got type string res = %+v", qName, res)
+		log.WithFields(log.Fields{"query": qName, "res": res}).Info("LastTimestampService : Got a jsonpath result of type string")
 		resultFloat, err = strconv.ParseFloat(res, 64)
 	case []interface{}:
 		if len(res) == 0 {
 			return time.Now().Unix(), false, ec.LME_7134, fmt.Errorf("LastTimestampService : There is no data (empty slice) on the provided jsonpath in TSDB response. Probably metric for the last timestamp evaluation for the query %v is configured for the first time on the environment, if it is the case, ignore this message", qName)
 		}
-		log.Infof("LastTimestampService : For query %v got type []interface{} res = %+v", qName, res)
+		log.WithFields(log.Fields{"query": qName, "res": res}).Info("LastTimestampService : Got a jsonpath result of type []interface{}")
 		resultFloat, err = utils.MaxFloat64InSlice(res)
 	default:
 		err = fmt.Errorf("unknown input type: %+v", reflect.TypeOf(result))

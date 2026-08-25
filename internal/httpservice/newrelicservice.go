@@ -75,7 +75,7 @@ func (g *NewRelicService) Query(qName string, startTime time.Time, endTime time.
 	now := time.Now()
 	var err error
 	defer func() {
-		log.Debugf("NewRelicService : For query %v request executed and json processed in %+v", qName, time.Since(now))
+		log.WithFields(log.Fields{"query": qName, "duration": time.Since(now)}).Debug("NewRelicService : Request executed and json processed")
 		if err != nil {
 			selfMonitorIncErrorCodeCount(qName, now)
 		} else {
@@ -99,7 +99,7 @@ func (g *NewRelicService) queryNewRelic(qName string, startTime time.Time, endTi
 	if err != nil {
 		return "", ec.LME_8102, fmt.Errorf("NewRelicService : For query %v error creating queryString : %+v", qName, err)
 	}
-	log.Debugf("NewRelicService : For query %v queryString is %v", qName, queryString)
+	log.WithFields(log.Fields{"query": qName, "query_string": queryString}).Debug("NewRelicService : Query string is prepared")
 
 	var transport http.RoundTripper = &http.Transport{
 		DialContext: (&net.Dialer{
@@ -128,35 +128,35 @@ func (g *NewRelicService) queryNewRelic(qName string, startTime time.Time, endTi
 	if resp.Body != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.Errorf("NewRelicService : Error closing response body : %+v", err)
+				log.WithField("error", err).Error("NewRelicService : Error closing response body")
 			}
 		}()
 	}
 
-	log.Debugf("NewRelicService : For query %v received response : %+v", qName, resp)
+	log.WithFields(log.Fields{"query": qName, "resp": resp}).Debug("NewRelicService : Received response")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", ec.LME_7140, fmt.Errorf("NewRelicService : For query %v to %v error reading body : %+v", qName, newRelicEndpoint, err)
 	}
 	result := string(body)
-	log.Infof("NewRelicService : For query %v to %v response status is %v, body length is %v", qName, newRelicEndpoint, resp.Status, len(result))
+	log.WithFields(log.Fields{"query": qName, "new_relic_endpoint": newRelicEndpoint, "status": resp.Status, "result_count": len(result)}).Info("NewRelicService : Received response from NewRelic")
 	if resp.StatusCode != 200 {
-		log.WithField(ec.FIELD, ec.LME_7142).Errorf("NewRelicService : For query %v received response with status code %v from graylog, response body (limited) : %v", qName, resp.StatusCode, utils.GetLimitedPrefix(result, 10000))
+		log.WithField(ec.FIELD, ec.LME_7142).WithFields(log.Fields{"query": qName, "status_code": resp.StatusCode, "response_preview": utils.GetLimitedPrefix(result, 10000)}).Error("NewRelicService : Received response with an error status code from graylog")
 		if resp.StatusCode >= 400 {
 			return "", ec.LME_7141, fmt.Errorf("NewRelicService : For query %v status code is %v", qName, resp.StatusCode)
 		}
 	}
-	log.Debugf("NewRelicService : For query %v received response body : %v", qName, result)
+	log.WithFields(log.Fields{"query": qName, "result": result}).Debug("NewRelicService : Received response body")
 
 	return result, "", nil
 }
 
 func (g *NewRelicService) processJson(stringData string, qName string) [][]string {
-	log.Debugf("NewRelicService : Json processing : For query %v nrResponse = %v", qName, stringData)
+	log.WithFields(log.Fields{"query": qName, "string_data": stringData}).Debug("NewRelicService : Json processing : NewRelic response is received")
 	var nrResponse NRResponse
 	err := json.Unmarshal([]byte(stringData), &nrResponse)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_7143).Errorf("NewRelicService : Unmarshaling error for query %v : %+v", qName, err)
+		log.WithField(ec.FIELD, ec.LME_7143).WithFields(log.Fields{"query": qName, "error": err}).Error("NewRelicService : Unmarshaling error")
 		return nil
 	}
 
@@ -164,7 +164,7 @@ func (g *NewRelicService) processJson(stringData string, qName string) [][]strin
 		return g.processFacets(nrResponse, qName)
 	} else if nrResponse.Results != nil {
 		if len(*nrResponse.Results) == 0 {
-			log.Warnf("NewRelicService : Json processing : For query %v, results list is empty", qName)
+			log.WithField("query", qName).Warn("NewRelicService : Json processing : Results list is empty")
 			return nil
 		}
 		events := (*nrResponse.Results)[0].Events
@@ -177,13 +177,13 @@ func (g *NewRelicService) processJson(stringData string, qName string) [][]strin
 		}
 	}
 
-	log.WithField(ec.FIELD, ec.LME_7144).Errorf("NewRelicService : Json processing : For query %v got Unknown JSON output case, processing will be skipped", qName)
+	log.WithField(ec.FIELD, ec.LME_7144).WithField("query", qName).Error("NewRelicService : Json processing : Got an unknown JSON output case, processing will be skipped")
 
 	return nil
 }
 
 func (g *NewRelicService) processEvents(events []map[string]interface{}, qName string) [][]string {
-	log.Debugf("NewRelicService : Json processing : For query %v processEvents called", qName)
+	log.WithField("query", qName).Debug("NewRelicService : Json processing : processEvents called")
 	keyList := make([]string, 0)
 	keyListSet := make(map[string]int)
 	for _, event := range events {
@@ -194,8 +194,8 @@ func (g *NewRelicService) processEvents(events []map[string]interface{}, qName s
 			}
 		}
 	}
-	log.Debugf("NewRelicService : Json processing : For query %v column names were found : %+v", qName, keyList)
-	log.Debugf("NewRelicService : Json processing : For query %v keyListSet : %+v", qName, keyListSet)
+	log.WithFields(log.Fields{"query": qName, "key_list": keyList}).Debug("NewRelicService : Json processing : Column names were found")
+	log.WithFields(log.Fields{"query": qName, "key_list_set": keyListSet}).Debug("NewRelicService : Json processing : Key list set is built")
 	records := make([][]string, len(events)+1)
 	records[0] = keyList
 	rowlen := len(keyList)
@@ -204,19 +204,19 @@ func (g *NewRelicService) processEvents(events []map[string]interface{}, qName s
 		for k, v := range event {
 			index, ok := keyListSet[k]
 			if !ok {
-				log.WithField(ec.FIELD, ec.LME_7143).Errorf("NewRelicService : Json processing : For query %v can not find index for key %v in keyListSet %+v for event %+v, which is completely unexpected!", qName, k, keyListSet, event)
+				log.WithField(ec.FIELD, ec.LME_7143).WithFields(log.Fields{"query": qName, "key": k, "key_list_set": keyListSet, "event": event}).Error("NewRelicService : Json processing : Can not find an index for the key in keyListSet, which is completely unexpected")
 			}
 			row[index] = fmt.Sprintf("%v", v)
 		}
 		records[i+1] = row
 	}
 
-	log.Debugf("NewRelicService : Json processing : For query %v the following records were calculated : %+v", qName, records)
+	log.WithFields(log.Fields{"query": qName, "records": records}).Debug("NewRelicService : Json processing : Records were calculated")
 	return records
 }
 
 func (g *NewRelicService) processFacets(nrResponse NRResponse, qName string) [][]string {
-	log.Debugf("NewRelicService : Facets processing : For query %v processFacets called", qName)
+	log.WithField("query", qName).Debug("NewRelicService : Facets processing : processFacets called")
 	labelNames := make([]string, 0)
 	switch facet := (*nrResponse.Metadata.Facet).(type) {
 	case string:
@@ -230,9 +230,9 @@ func (g *NewRelicService) processFacets(nrResponse NRResponse, qName string) [][
 	case interface{}:
 		labelNames = append(labelNames, fmt.Sprintf("%v", facet))
 	default:
-		log.WithField(ec.FIELD, ec.LME_7144).Errorf("NewRelicService : Facets processing : For query %v got unknown type for Metadata.Facet in JSON : %+v", qName, reflect.TypeOf(facet))
+		log.WithField(ec.FIELD, ec.LME_7144).WithFields(log.Fields{"query": qName, "facet_type": reflect.TypeOf(facet)}).Error("NewRelicService : Facets processing : Got an unknown type for Metadata.Facet in JSON")
 	}
-	log.Debugf("NewRelicService : Facets processing : For query %v got labelNames : %+v", qName, labelNames)
+	log.WithFields(log.Fields{"query": qName, "label_names": labelNames}).Debug("NewRelicService : Facets processing : Got label names")
 
 	columnNumber := len(labelNames) + 1
 
@@ -256,32 +256,32 @@ func (g *NewRelicService) processFacets(nrResponse NRResponse, qName string) [][
 		case interface{}:
 			row = append(row, fmt.Sprintf("%v", f))
 		default:
-			log.WithField(ec.FIELD, ec.LME_7144).Errorf("NewRelicService : Facets processing : For query %v got unknown type for Facets.Name in JSON : %+v", qName, reflect.TypeOf(facetItem.Name))
+			log.WithField(ec.FIELD, ec.LME_7144).WithFields(log.Fields{"query": qName, "facet_name_type": reflect.TypeOf(facetItem.Name)}).Error("NewRelicService : Facets processing : Got an unknown type for Facets.Name in JSON")
 		}
 		if len(facetItem.Results) != 1 {
 			if len(facetItem.Results) == 0 {
-				log.Warnf("NewRelicService : Facets processing : For query %v len(facetItem.Results) = 0", qName)
+				log.WithField("query", qName).Warn("NewRelicService : Facets processing : Facet item has no results, skipping it")
 				continue
 			}
-			log.Debugf("NewRelicService : Facets processing : For query %v len(facetItem.Results) = %v", qName, len(facetItem.Results))
+			log.WithFields(log.Fields{"query": qName, "results_count": len(facetItem.Results)}).Debug("NewRelicService : Facets processing : Facet item has an unexpected number of results")
 		}
 		row = append(row, fmt.Sprintf("%v", facetItem.Results[0].Count))
 		if len(row) != columnNumber {
-			log.Warnf("NewRelicService : Facets processing : For query %v len(row) = %v; columnNumber = %v", qName, len(row), columnNumber)
+			log.WithFields(log.Fields{"query": qName, "row_count": len(row), "column_number": columnNumber}).Warn("NewRelicService : Facets processing : Row length does not match the column number")
 		}
 		records = append(records, row)
 	}
-	log.Debugf("NewRelicService : Facets processing : For query %v the following records were calculated : %+v", qName, records)
+	log.WithFields(log.Fields{"query": qName, "records": records}).Debug("NewRelicService : Facets processing : Records were calculated")
 
 	return records
 }
 
 func (g *NewRelicService) processUniqueCounts(uniqueCount float64, qName string) [][]string {
-	log.Debugf("NewRelicService : UniqueCount processing : For query %v processUniqueCounts called", qName)
+	log.WithField("query", qName).Debug("NewRelicService : UniqueCount processing : processUniqueCounts called")
 	records := make([][]string, 0)
 	records = append(records, []string{RESULT_FIELD_NAME})
 	records = append(records, []string{fmt.Sprintf("%v", uniqueCount)})
-	log.Debugf("NewRelicService : UniqueCount processing : For query %v the following records were calculated : %+v", qName, records)
+	log.WithFields(log.Fields{"query": qName, "records": records}).Debug("NewRelicService : UniqueCount processing : Records were calculated")
 	return records
 }
 

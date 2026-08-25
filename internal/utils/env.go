@@ -25,17 +25,17 @@ import (
 func GetOctalUintEnvironmentVariable(name string, defaultValue uint32) uint32 {
 	valueStr := os.Getenv(name)
 	if valueStr == "" {
-		log.Infof("Environment variable %v is empty. Default value %o is used", name, defaultValue)
+		log.WithFields(log.Fields{"name": name, "default_value": defaultValue}).Info("Environment variable is empty. Default value is used")
 		return defaultValue
 	}
 	result, err := strconv.ParseUint(valueStr, 8, 32)
 
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error trying to parse uint octal environment variable %v with value %v, default value %o is used instead. Error : %+v", name, valueStr, defaultValue, err)
+		log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"name": name, "value_str": valueStr, "default_value": defaultValue, "error": err}).Error("Error trying to parse uint octal environment variable, default value is used instead")
 		return defaultValue
 	}
 
-	log.Infof("Environment variable %v with value %v parsed successfully as octal uint %o", name, valueStr, result)
+	log.WithFields(log.Fields{"name": name, "value_str": valueStr, "result": result}).Info("Environment variable parsed successfully as octal uint")
 
 	return uint32(result)
 }

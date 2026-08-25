@@ -25,12 +25,12 @@ import (
 )
 
 func (e *Evaluator) evaluateValueMetric(data [][]string, metric string, metricCfg *config.MetricsConfig) *MetricEvaluationResult {
-	log.Debugf("evaluateValueMetric %v", metric)
+	log.WithField("metric", metric).Debug("evaluateValueMetric")
 	metricState := e.monState.Get(metric)
 	var metricSeriesMap map[string]*MetricSeries
 
 	if metricState == nil {
-		log.Warnf("MetricState is empty for %v", metric)
+		log.WithField("metric", metric).Warn("MetricState is empty")
 		metricState = CreateMetricState()
 		e.monState.Set(metric, metricState)
 	}
@@ -43,7 +43,7 @@ func (e *Evaluator) evaluateValueMetric(data [][]string, metric string, metricCf
 	metricSeriesMap = e.evaluateMetricSeriesMapByOLV(data, metric, metricCfg)
 	if log.IsLevelEnabled(log.TraceLevel) {
 		for olv, ms := range metricSeriesMap {
-			log.Tracef("MetricSeriesMap : for metric %v for olv %v got sum %v and count %v", metric, olv, ms.Sum, ms.Count)
+			log.WithFields(log.Fields{"metric": metric, "olv": olv, "sum": ms.Sum, "cnt": ms.Count}).Trace("MetricSeriesMap : sum and count evaluated")
 		}
 	}
 
@@ -52,7 +52,7 @@ func (e *Evaluator) evaluateValueMetric(data [][]string, metric string, metricCf
 		if labels == nil {
 			labels = generateLabelValueMapFromOLV(olv, metricCfg.Labels)
 			metricState.Set(olv, labels)
-			log.Debugf("Generate new metricstate values %v for metric %v", olv, metric)
+			log.WithFields(log.Fields{"olv": olv, "metric": metric}).Debug("Generating new metricstate values")
 		}
 		ms.Labels = labels
 		if ms.Count != 0 {
@@ -67,20 +67,20 @@ func (e *Evaluator) evaluateValueMetric(data [][]string, metric string, metricCf
 }
 
 func (e *Evaluator) evaluateMetricSeriesMapByOLV(data [][]string, metric string, metricCfg *config.MetricsConfig) map[string]*MetricSeries {
-	log.Debugf("evaluateMetricSeriesMapByOLV for metric %v", metric)
+	log.WithField("metric", metric).Debug("evaluateMetricSeriesMapByOLV")
 	dataSize := len(data)
 	if dataSize < 2 {
-		log.Debugf("DataSize == %v for metric %v, evaluation result is empty", dataSize, metric)
+		log.WithFields(log.Fields{"data_size": dataSize, "metric": metric}).Debug("The evaluation result is empty")
 		return make(map[string]*MetricSeries)
 	}
 
 	heading := data[0]
 	labelIndexes, err := evaluateLabelSourceFieldIndexes(metricCfg, heading)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_1020).Errorf("Can not evaluate value metric %v : %+v", metric, err)
+		log.WithField(ec.FIELD, ec.LME_1020).WithFields(log.Fields{"metric": metric, "error": err}).Error("Cannot evaluate the value metric")
 		return make(map[string]*MetricSeries)
 	}
-	log.Debugf("labelIndexes = %+v; heading = %v for metric %v", labelIndexes, heading, metric)
+	log.WithFields(log.Fields{"label_indexes": labelIndexes, "heading": heading, "metric": metric}).Debug("Label indexes resolved")
 
 	valueField := metricCfg.MetricValue
 	if valueField == "" {
@@ -88,7 +88,7 @@ func (e *Evaluator) evaluateMetricSeriesMapByOLV(data [][]string, metric string,
 	}
 	valueIndex := utils.FindStringIndexInArray(heading, valueField)
 	if valueIndex == -1 {
-		log.WithField(ec.FIELD, ec.LME_1020).Errorf("Can not evaluate value metric %v : field %v not found in the output", metric, valueField)
+		log.WithField(ec.FIELD, ec.LME_1020).WithFields(log.Fields{"metric": metric, "field": valueField}).Error("Cannot evaluate the value metric, the field is not found in the output")
 		return make(map[string]*MetricSeries)
 	}
 
@@ -152,12 +152,12 @@ func (e *Evaluator) evaluateMetricSeriesMapByOLV(data [][]string, metric string,
 }
 
 func (e *Evaluator) evaluateMetricSeriesMapByOLVTask(data [][]string, metric string, metricCfg *config.MetricsConfig, labelIndexes []int, valueIndex int, meCondition *MECondition, start int, end int) map[string]*MetricSeries {
-	log.Debugf("evaluateMetricSeriesMapByOLVTask %v; start = %v, end = %v", metric, start, end)
+	log.WithFields(log.Fields{"metric": metric, "start": start, "end": end}).Debug("evaluateMetricSeriesMapByOLVTask")
 	result := make(map[string]*MetricSeries)
 	isHistogram := (metricCfg.Type == "histogram")
 
 	if start >= end {
-		log.Debugf("start >= end for metric %v; start = %v, end = %v", metric, start, end)
+		log.WithFields(log.Fields{"metric": metric, "start": start, "end": end}).Debug("start >= end")
 		return result
 	}
 
@@ -170,7 +170,7 @@ func (e *Evaluator) evaluateMetricSeriesMapByOLVTask(data [][]string, metric str
 		valStr := data[i][valueIndex]
 		val, err := strconv.ParseFloat(valStr, 64)
 		if err != nil {
-			log.Debugf("Error parsing value %v for metric %v : %+v", valStr, metric, err)
+			log.WithFields(log.Fields{"value": valStr, "metric": metric, "error": err}).Debug("Cannot parse the value")
 			parsingErrors++
 			continue
 		}
@@ -200,7 +200,7 @@ func (e *Evaluator) evaluateMetricSeriesMapByOLVTask(data [][]string, metric str
 	}
 
 	if parsingErrors != 0 || nans != 0 || infs != 0 {
-		log.Warnf("While evaluating metric %v from row %v to row %v datarows were skipped : %v parsing errors, %v nans, %v infs", metric, start, end, parsingErrors, nans, infs)
+		log.WithFields(log.Fields{"metric": metric, "start": start, "end": end, "parsing_errors": parsingErrors, "nans": nans, "infs": infs}).Warn("Datarows were skipped while evaluating the metric")
 	}
 
 	return result

@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/common v0.70.1
 	github.com/prometheus/prometheus v0.313.2
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/sirupsen/logrus v1.10.0
+	github.com/sirupsen/logrus v1.10.2
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 )

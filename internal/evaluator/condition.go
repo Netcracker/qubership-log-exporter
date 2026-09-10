@@ -41,27 +41,27 @@ func CreateMECondition(metric string, condConfig []map[string]map[string]string,
 	res.subConditions = make([]MESubCondition, 0, len(condConfig))
 
 	for i, cond := range condConfig {
-		log.Debugf("For metric %v processing condition %v ...", metric, i)
+		log.WithFields(log.Fields{"metric": metric, "i": i}).Debug("Processing condition")
 		equCond := cond[EQU_COND_NAME]
 		if equCond == nil {
-			log.Debugf("For metric %v, condition %v equCond = nil", metric, i)
+			log.WithFields(log.Fields{"metric": metric, "i": i}).Debug("Condition has no equ block, skipping it")
 			continue
 		}
 		mesc := MESubCondition{}
 		equConditions := make([]EquCondition, 0, len(equCond))
 		for fieldName, fieldValue := range equCond {
-			log.Debugf("For metric %v, condition %v processing equCond : fieldName %v, fieldValue %v", metric, i, fieldName, fieldValue)
+			log.WithFields(log.Fields{"metric": metric, "i": i, "field_name": fieldName, "field_value": fieldValue}).Debug("Processing equ condition field")
 			equCondition := EquCondition{}
 			equCondition.FieldValue = fieldValue
 			equCondition.FieldIndex = utils.FindStringIndexInArray(header, fieldName)
 			equConditions = append(equConditions, equCondition)
 		}
-		log.Debugf("For metric %v, condition %v equConditions = %+v", metric, i, equConditions)
+		log.WithFields(log.Fields{"metric": metric, "i": i, "equ_conditions": equConditions}).Debug("Built the equ conditions of the condition")
 		mesc.equConditions = equConditions
 
 		res.subConditions = append(res.subConditions, mesc)
 	}
-	log.Debugf("For metric %v MECondition = %+v", metric, res)
+	log.WithFields(log.Fields{"metric": metric, "res": res}).Debug("Created the metric evaluation condition")
 
 	return &res
 }

@@ -54,25 +54,25 @@ func (gcp *LokiCallsProcessor) Start() {
 }
 
 func (gcp *LokiCallsProcessor) startGoroutine(queryName string, queryConfig *config.QueryConfig) {
-	defer log.Infof("LokiCallsProcessor : Goroutine for query %v is finished", queryName)
+	defer log.WithField("query", queryName).Info("LokiCallsProcessor : Goroutine for the query is finished")
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("LokiCallsProcessor : Panic during execution of query %v : %+v ; Stacktrace of the panic : %v", queryName, rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"query": queryName, "panic": rec, "stacktrace": string(debug.Stack())}).Error("LokiCallsProcessor : Panic during execution of the query")
 			time.Sleep(time.Second * 5)
-			log.Infof("LokiCallsProcessor : Starting gouroutine for query %v again ...", queryName)
+			log.WithField("query", queryName).Info("LokiCallsProcessor : Starting goroutine for the query again ...")
 			go gcp.startGoroutine(queryName, queryConfig)
 			gcp.selfMonitorIncPanicRecoveries(queryName, 1.0, time.Now())
 		}
 	}()
-	log.Infof("LokiCallsProcessor : Goroutine for query %v is started", queryName)
+	log.WithField("query", queryName).Info("LokiCallsProcessor : Goroutine for the query is started")
 	for {
 		time, ok := gcp.gtsQueue.Get(queryName)
 		if !ok {
-			log.WithField(ec.FIELD, ec.LME_1621).Errorf("LokiCallsProcessor : Chan is closed for the query %v, stopping goroutine", queryName)
+			log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("LokiCallsProcessor : Chan is closed for the query, stopping goroutine")
 			return
 		}
 		if time.IsZero() {
-			log.Infof("LokiCallsProcessor : Zero time received for query %v", queryName)
+			log.WithField("query", queryName).Info("LokiCallsProcessor : Zero time received for the query")
 			continue
 		}
 		gcp.gdQueue.Put(queryName, gcp.executeLokiQuery(queryName, queryConfig, time))
@@ -81,15 +81,15 @@ func (gcp *LokiCallsProcessor) startGoroutine(queryName string, queryConfig *con
 
 func (gcp *LokiCallsProcessor) executeLokiQuery(qName string, queryConfig *config.QueryConfig, startTime time.Time) *queues.GraylogData {
 	endTime := startTime.Add(queryConfig.TimerangeDuration)
-	log.Debugf("executeLokiQuery for query %v, startTime %v, endTime %v", qName, startTime, endTime)
+	log.WithFields(log.Fields{"query": qName, "start_time": startTime, "end_time": endTime}).Debug("executeLokiQuery")
 
 	queryResult, errc, err := gcp.lokiService.Query(qName, startTime, endTime)
 
 	for err != nil {
-		log.WithField(ec.FIELD, errc).Errorf("Error requesting loki for query %v, startTime %v , endTime %v : %+v", qName, startTime, endTime, err)
+		log.WithField(ec.FIELD, errc).WithFields(log.Fields{"query": qName, "start_time": startTime, "end_time": endTime, "error": err}).Error("Error requesting loki")
 		if *gcp.appConfig.General.DatasourceRetry {
 			time.Sleep(gcp.appConfig.General.DatasourceRetryPeriodParsed)
-			log.Infof("Retry requesting loki for query %v, startTime %v , endTime %v", qName, startTime, endTime)
+			log.WithFields(log.Fields{"query": qName, "start_time": startTime, "end_time": endTime}).Info("Retry requesting loki")
 			queryResult, errc, err = gcp.lokiService.Query(qName, startTime, endTime)
 		} else {
 			break

@@ -58,36 +58,36 @@ func (vp *PromRemoteWriteProcessor) Start() {
 }
 
 func (vp *PromRemoteWriteProcessor) startGoroutine(queryName string) {
-	defer log.Infof("PromRemoteWriteProcessor : Goroutine for query %v is finished", queryName)
+	defer log.WithField("query", queryName).Info("PromRemoteWriteProcessor : Goroutine for the query is finished")
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("PromRemoteWriteProcessor : Panic during pushing for query %v : %+v ; Stacktrace of the panic : %v", queryName, rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"query": queryName, "panic": rec, "stacktrace": string(debug.Stack())}).Error("PromRemoteWriteProcessor : Panic during pushing for the query")
 			time.Sleep(time.Second * 5)
-			log.Infof("PromRemoteWriteProcessor : Starting gouroutine for query %v again ...", queryName)
+			log.WithField("query", queryName).Info("PromRemoteWriteProcessor : Starting goroutine for the query again ...")
 			go vp.startGoroutine(queryName)
 			vp.selfMonitorIncPanicRecoveries(queryName, 1.0, time.Now())
 		}
 	}()
-	log.Infof("PromRemoteWriteProcessor : Goroutine for query %v is started", queryName)
+	log.WithField("query", queryName).Info("PromRemoteWriteProcessor : Goroutine for the query is started")
 	promRWService := vp.promRWService
 	for {
 		mfs, ok := vp.gmQueue.Get(queryName)
 		if !ok {
-			log.WithField(ec.FIELD, ec.LME_1621).Errorf("PromRemoteWriteProcessor : Chan is closed for the query %v, stopping goroutine", queryName)
+			log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("PromRemoteWriteProcessor : Chan is closed for the query, stopping goroutine")
 			return
 		}
 		if len(mfs) == 0 {
-			log.Infof("PromRemoteWriteProcessor : No metric families received for the query %v", queryName)
+			log.WithField("query", queryName).Info("PromRemoteWriteProcessor : No metric families received for the query")
 			continue
 		}
 		if promRWService != nil {
 			vp.enrichWithCloudLabels(mfs)
 			errc, err := promRWService.WriteMetrics(mfs, queryName)
 			for err != nil {
-				log.WithField(ec.FIELD, errc).Errorf("PromRemoteWriteProcessor : Error pushing metrics for query %v : %+v", queryName, err)
+				log.WithField(ec.FIELD, errc).WithFields(log.Fields{"query": queryName, "error": err}).Error("PromRemoteWriteProcessor : Error pushing metrics for the query")
 				if *vp.appConfig.General.PushRetry {
 					time.Sleep(vp.appConfig.General.PushRetryPeriodParsed)
-					log.Infof("PromRemoteWriteProcessor : Retry pushing metrics for query %v", queryName)
+					log.WithField("query", queryName).Info("PromRemoteWriteProcessor : Retry pushing metrics for the query")
 					errc, err = promRWService.WriteMetrics(mfs, queryName)
 				} else {
 					break
@@ -98,36 +98,36 @@ func (vp *PromRemoteWriteProcessor) startGoroutine(queryName string) {
 }
 
 func (vp *PromRemoteWriteProcessor) startGoroutineForSelfMetrics() {
-	defer log.Infof("PromRemoteWriteProcessor : Goroutine for %v is finished", utils.SELF_METRICS_REGISTRY_NAME)
+	defer log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("PromRemoteWriteProcessor : Goroutine for the registry is finished")
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("PromRemoteWriteProcessor : Panic during pushing for %v : %+v ; Stacktrace of the panic : %v", utils.SELF_METRICS_REGISTRY_NAME, rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"self_metrics_registry_name": utils.SELF_METRICS_REGISTRY_NAME, "panic": rec, "stacktrace": string(debug.Stack())}).Error("PromRemoteWriteProcessor : Panic during pushing for the registry")
 			time.Sleep(time.Second * 5)
-			log.Infof("PromRemoteWriteProcessor : Starting gouroutine for %v again ...", utils.SELF_METRICS_REGISTRY_NAME)
+			log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("PromRemoteWriteProcessor : Starting goroutine for the registry again ...")
 			go vp.startGoroutineForSelfMetrics()
 			vp.selfMonitorIncPanicRecoveries(utils.SELF_METRICS_REGISTRY_NAME, 1.0, time.Now())
 		}
 	}()
-	log.Infof("PromRemoteWriteProcessor : Goroutine for %v is started", utils.SELF_METRICS_REGISTRY_NAME)
+	log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("PromRemoteWriteProcessor : Goroutine for the registry is started")
 	promRWService := vp.promRWService
 	for {
 		mfs, ok := vp.gmQueue.Get(utils.SELF_METRICS_REGISTRY_NAME)
 		if !ok {
-			log.WithField(ec.FIELD, ec.LME_1621).Errorf("PromRemoteWriteProcessor : Chan is closed for %v, stopping goroutine", utils.SELF_METRICS_REGISTRY_NAME)
+			log.WithField(ec.FIELD, ec.LME_1621).WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Error("PromRemoteWriteProcessor : Chan is closed for the registry, stopping goroutine")
 			return
 		}
 		if len(mfs) == 0 {
-			log.Infof("PromRemoteWriteProcessor : No metric families received for %v", utils.SELF_METRICS_REGISTRY_NAME)
+			log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("PromRemoteWriteProcessor : No metric families received for the registry")
 			continue
 		}
 		if promRWService != nil {
 			vp.enrichWithCloudLabels(mfs)
 			errc, err := promRWService.WriteMetrics(mfs, utils.SELF_METRICS_REGISTRY_NAME)
 			for err != nil {
-				log.WithField(ec.FIELD, errc).Errorf("PromRemoteWriteProcessor : Error pushing metrics for %v : %+v", utils.SELF_METRICS_REGISTRY_NAME, err)
+				log.WithField(ec.FIELD, errc).WithFields(log.Fields{"self_metrics_registry_name": utils.SELF_METRICS_REGISTRY_NAME, "error": err}).Error("PromRemoteWriteProcessor : Error pushing metrics for the registry")
 				if *vp.appConfig.General.PushRetry {
 					time.Sleep(vp.appConfig.General.PushRetryPeriodParsed)
-					log.Infof("PromRemoteWriteProcessor : Retry pushing metrics for %v", utils.SELF_METRICS_REGISTRY_NAME)
+					log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("PromRemoteWriteProcessor : Retry pushing metrics for the registry")
 					errc, err = promRWService.WriteMetrics(mfs, utils.SELF_METRICS_REGISTRY_NAME)
 				} else {
 					break

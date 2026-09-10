@@ -39,10 +39,10 @@ func NewGMQueue(appConfig *config.Config) *GMQueue {
 	}
 	for queryName, queryConfig := range appConfig.Queries {
 		result.mfsByQuery[queryName] = make(chan []*dto.MetricFamily, queryConfig.GMQueueSizeParsed)
-		log.Infof("For query %v GMQueue is created, size : %v", queryName, cap(result.mfsByQuery[queryName]))
+		log.WithFields(log.Fields{"query": queryName, "cap": cap(result.mfsByQuery[queryName])}).Info("GMQueue is created")
 	}
 	result.mfsByQuery[utils.SELF_METRICS_REGISTRY_NAME] = make(chan []*dto.MetricFamily, appConfig.General.GMQueueSelfMonSizeParsed)
-	log.Infof("For SELF_METRICS GMQueue is created, size : %v", cap(result.mfsByQuery[utils.SELF_METRICS_REGISTRY_NAME]))
+	log.WithField("cap", cap(result.mfsByQuery[utils.SELF_METRICS_REGISTRY_NAME])).Info("For SELF_METRICS GMQueue is created")
 	return result
 }
 
@@ -50,24 +50,24 @@ func (gmq *GMQueue) Put(queryName string, mfs []*dto.MetricFamily, isBlocking bo
 	c := gmq.mfsByQuery[queryName]
 
 	if c == nil {
-		log.WithField(ec.FIELD, ec.LME_1624).Errorf("GMQueue PutGatherer : Attempting to put buffer for execution to channel for non-existent query %v", queryName)
+		log.WithField(ec.FIELD, ec.LME_1624).WithField("query", queryName).Error("GMQueue PutGatherer : Attempting to put buffer for execution to channel for non-existent query")
 		return
 	}
 
 	if isBlocking {
-		log.Debugf("GMQueue PutGatherer (blocking) : For query %v put buffer, queue len is %v", queryName, len(c))
+		log.WithFields(log.Fields{"query": queryName, "c_count": len(c)}).Debug("GMQueue PutGatherer (blocking) : put buffer")
 		c <- mfs
 		size := len(c)
-		log.Debugf("GMQueue PutGatherer (blocking) : For query %v put successfully performed, queue len is %v", queryName, size)
+		log.WithFields(log.Fields{"query": queryName, "size": size}).Debug("GMQueue PutGatherer (blocking) : put successfully performed")
 		gmq.selfMonitorSetQueueSize(float64(size), queryName, time.Now())
 	} else {
 		select {
 		case c <- mfs:
 			size := len(c)
-			log.Debugf("GMQueue PutGatherer (non-blocking) : For query %v put buffer, queue len is %v", queryName, size)
+			log.WithFields(log.Fields{"query": queryName, "size": size}).Debug("GMQueue PutGatherer (non-blocking) : put buffer")
 			gmq.selfMonitorSetQueueSize(float64(size), queryName, time.Now())
 		default:
-			log.WithField(ec.FIELD, ec.LME_1625).Errorf("GMQueue PutGatherer (non-blocking) : Attempting to put buffer for execution to channel for query %v : channel is full, len == %v", queryName, len(c))
+			log.WithField(ec.FIELD, ec.LME_1625).WithFields(log.Fields{"query": queryName, "c_count": len(c)}).Error("GMQueue PutGatherer (non-blocking) : Attempting to put buffer for execution to channel, but the channel is full")
 		}
 	}
 }
@@ -76,14 +76,14 @@ func (gmq *GMQueue) Get(queryName string) ([]*dto.MetricFamily, bool) {
 	c := gmq.mfsByQuery[queryName]
 	result, ok := <-c
 	size := len(c)
-	log.Debugf("GMQueue Get : For query %v buffer is extracted, queue len is %v", queryName, size)
+	log.WithFields(log.Fields{"query": queryName, "size": size}).Debug("GMQueue Get : buffer is extracted")
 	gmq.selfMonitorSetQueueSize(float64(size), queryName, time.Now())
 	return result, ok
 }
 
 func (gmq *GMQueue) CloseChan(queryName string) {
 	c := gmq.mfsByQuery[queryName]
-	log.Infof("GMQueue CloseChan : For query %v chan is closed", queryName)
+	log.WithField("query", queryName).Info("GMQueue CloseChan : chan is closed")
 	close(c)
 }
 

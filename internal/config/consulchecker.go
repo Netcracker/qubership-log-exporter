@@ -29,7 +29,7 @@ func StartConsulChecker() {
 	enabled := os.Getenv("LME_CONSUL_ENABLED")
 
 	if strings.ToUpper(enabled) != "TRUE" {
-		log.Infof("ConsulChecker : Environment variable LME_CONSUL_ENABLED = %v, log-level will not be managed by Consul", enabled)
+		log.WithField("enabled", enabled).Info("ConsulChecker : LME_CONSUL_ENABLED is not set to TRUE, log-level will not be managed by Consul")
 		return
 	}
 
@@ -52,7 +52,7 @@ func StartConsulChecker() {
 		Token:     token,
 	})
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_8105).Errorf("ConsulChecker : Error creating consul client : %+v", err)
+		log.WithField(ec.FIELD, ec.LME_8105).WithField("error", err).Error("ConsulChecker : Error creating consul client")
 		return
 	}
 
@@ -61,7 +61,7 @@ func StartConsulChecker() {
 	if consulLogLevelPath == "" {
 		namespace := os.Getenv("NAMESPACE")
 		if namespace == "" {
-			log.WithField(ec.FIELD, ec.LME_8105).Errorf("ConsulChecker : Consul log-level property path is unknown. Log-level will not be managed by Consul")
+			log.WithField(ec.FIELD, ec.LME_8105).Error("ConsulChecker : Consul log-level property path is unknown. Log-level will not be managed by Consul")
 			return
 		}
 		consulLogLevelPath = "config/" + namespace + "/lme/log.level"
@@ -70,11 +70,11 @@ func StartConsulChecker() {
 	consulPeriodString := os.Getenv("LME_CONSUL_CHECK_PERIOD")
 	consulPeriodDuration, err := time.ParseDuration(consulPeriodString)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_8105).Errorf("ConsulChecker : Error during duration parsing of value %v of LME_CONSUL_CHECK_PERIOD environment variable. Log-level will not be managed by Consul : %+v", consulPeriodString, err)
+		log.WithField(ec.FIELD, ec.LME_8105).WithFields(log.Fields{"consul_period_string": consulPeriodString, "error": err}).Error("ConsulChecker : Error parsing the duration of the LME_CONSUL_CHECK_PERIOD environment variable. Log-level will not be managed by Consul")
 		return
 	}
 
-	log.Infof("ConsulChecker : url = %v ; token = %v ; consulLogLevelPath = %v ; consulPeriod = %v", url, getSafeToken(token), consulLogLevelPath, consulPeriodString)
+	log.WithFields(log.Fields{"url": url, "token": getSafeToken(token), "consul_log_level_path": consulLogLevelPath, "consul_period_string": consulPeriodString}).Info("ConsulChecker : Consul client configuration")
 
 	currentLevel := log.GetLevel().String()
 	kv := client.KV()
@@ -82,19 +82,19 @@ func StartConsulChecker() {
 		for {
 			pair, _, err := kv.Get(consulLogLevelPath, nil)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_7151).Errorf("ConsulChecker : Error getting value with key %v from consul : %+v", consulLogLevelPath, err)
+				log.WithField(ec.FIELD, ec.LME_7151).WithFields(log.Fields{"consul_log_level_path": consulLogLevelPath, "error": err}).Error("ConsulChecker : Error getting the value for the log-level key from Consul")
 			} else if pair == nil {
-				log.WithField(ec.FIELD, ec.LME_7151).Errorf("ConsulChecker : Nil pair received from consul for log-level")
+				log.WithField(ec.FIELD, ec.LME_7151).Error("ConsulChecker : Nil pair received from consul for log-level")
 			} else {
-				log.Debugf("ConsulChecker : The Key and value recieved from Consul: %v %v", pair.Key, string(pair.Value))
+				log.WithFields(log.Fields{"key": pair.Key, "value": string(pair.Value)}).Debug("ConsulChecker : Key and value received from Consul")
 				newLevel := string(pair.Value)
 
 				if newLevel != currentLevel {
 					level, err := log.ParseLevel(newLevel)
 					if err != nil {
-						log.WithField(ec.FIELD, ec.LME_7154).Errorf("ConsulChecker : Got incorrect log-level from Consul %v : %+v", newLevel, err)
+						log.WithField(ec.FIELD, ec.LME_7154).WithFields(log.Fields{"new_level": newLevel, "error": err}).Error("ConsulChecker : Got an incorrect log-level from Consul")
 					} else {
-						log.Warnf("ConsulChecker : Setting new log-level from Consul : %v", newLevel)
+						log.WithField("new_level", newLevel).Warn("ConsulChecker : Setting the new log-level from Consul")
 						log.SetLevel(level)
 						currentLevel = newLevel
 					}

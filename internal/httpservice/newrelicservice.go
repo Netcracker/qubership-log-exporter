@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -119,7 +120,7 @@ func (g *NewRelicService) queryNewRelic(qName string, startTime time.Time, endTi
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-Query-Key", g.dsConfig.Password)
-	log.Debugf("NewRelicService: For query %v request to NewRelic is %+v", qName, req)
+	log.Debugf("NewRelicService: For query %v request to NewRelic is %v %v with headers %v", qName, req.Method, req.URL.Redacted(), getSafeHeaderNames(req.Header))
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", ec.LME_7140, fmt.Errorf("NewRelicService : For query %v error accessing %v : %+v", qName, newRelicEndpoint, err)
@@ -300,4 +301,16 @@ func (g *NewRelicService) getQueryString(qName string, startTime time.Time, endT
 		return "", fmt.Errorf("error executing template for query %v : %+v", qName, err)
 	}
 	return buf.String(), nil
+}
+
+// getSafeHeaderNames returns the header names of h in sorted order, without the
+// values. Request headers carry credentials such as the New Relic X-Query-Key,
+// so only the names are safe to log.
+func getSafeHeaderNames(h http.Header) []string {
+	names := make([]string, 0, len(h))
+	for name := range h {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

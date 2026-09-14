@@ -38,7 +38,7 @@ You can specify the following command-line arguments to configure the log-export
 | key-path                  | string | Path to the key for DSN encryption                 |                    |
 | listen-address            | string | The address to listen (port) for HTTP requests     | :8080              |
 | log-archivation           | bool   | Archiving rotated logs                             | true               |
-| log-format                | string | Log messages in JSON (`json`, `cloud`, `text`)     | text               |
+| log-format                | string | Log messages in JSON (`json`, `cloud`, `text`)     | json               |
 | log-level                 | string | Log level                                          | debug              |
 | log-max-age               | int    | Set maximum age of log backups in days             | 90                 |
 | log-max-backups           | int    | Set maximum number of log backups                  | 20                 |

@@ -77,7 +77,7 @@ func (p *PromRWService) WriteMetrics(metricFamilies []*dto.MetricFamily, queryNa
 		Transport: transport,
 		Timeout:   p.exportConfig.ConnectionTimeout,
 	}
-	log.Infof("PromRWService : For query %v sending request, size of encoded message is %v bytes", queryName, encodedSize)
+	log.WithFields(log.Fields{"query": queryName, "encoded_size": encodedSize}).Info("PromRWService : Sending the remote-write request")
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return ec.LME_7120, fmt.Errorf("PromRWService : Error sending remote-write request: %w", err)
@@ -86,7 +86,7 @@ func (p *PromRWService) WriteMetrics(metricFamilies []*dto.MetricFamily, queryNa
 	if resp.Body != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.Errorf("PromRWService : Error closing response body : %+v", err)
+				log.WithField("error", err).Error("PromRWService : Error closing response body")
 			}
 		}()
 	}
@@ -97,7 +97,7 @@ func (p *PromRWService) WriteMetrics(metricFamilies []*dto.MetricFamily, queryNa
 		return ec.LME_7122, fmt.Errorf("PromRWService : Got http status %v from remote-write, response body is %v", status, string(msg))
 	}
 
-	log.Infof("PromRWService : For query %v metrics were pushed successfully, got status %v", queryName, resp.Status)
+	log.WithFields(log.Fields{"query": queryName, "status": resp.Status}).Info("PromRWService : Metrics were pushed successfully")
 	return "", nil
 }
 
@@ -111,7 +111,7 @@ func (p *PromRWService) getProtoData(metricFamilies []*dto.MetricFamily) []promp
 	for _, mf := range metricFamilies {
 		timeSeries, err := p.metricFamilyToPrompb(mf)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_1042).Errorf("Error converting metricFamily to prompb timeSeries : %+v", err)
+			log.WithField(ec.FIELD, ec.LME_1042).WithField("error", err).Error("Error converting metricFamily to prompb timeSeries")
 		}
 		res = append(res, timeSeries...)
 	}

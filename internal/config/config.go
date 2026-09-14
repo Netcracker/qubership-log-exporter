@@ -229,7 +229,7 @@ func Read(path string) (*Config, error) {
 		if configFile != nil {
 			defer func() {
 				if err := configFile.Close(); err != nil {
-					log.Errorf("error closing config file %v : %+v", path, err)
+					log.WithFields(log.Fields{"path": path, "error": err}).Error("Error closing the config file")
 				}
 			}()
 		}
@@ -241,7 +241,7 @@ func Read(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error copying config file %v : %+v", path, err)
 	}
-	log.Debugf("Copied %v bytes successfully to the buffer from file %v", length, path)
+	log.WithFields(log.Fields{"length": length, "path": path}).Debug("Copied file contents to the buffer")
 
 	err = yaml.Unmarshal(buf.Bytes(), &config)
 	if err != nil {
@@ -267,7 +267,7 @@ func Read(path string) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error processing TLS settings for datasource %v : %+v", dsName, err)
 		} else {
-			log.Infof("TLS settings for datasource %v processed successfully", dsName)
+			log.WithField("datasource", dsName).Info("TLS settings for datasource processed successfully")
 		}
 	}
 
@@ -276,7 +276,7 @@ func Read(path string) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error processing TLS settings for export config %v : %+v", exportName, err)
 		} else {
-			log.Infof("TLS settings for export config %v processed successfully", exportName)
+			log.WithField("export", exportName).Info("TLS settings for export config processed successfully")
 		}
 		if exportConfig.LastTimestampHost != nil {
 			if strings.ToUpper(exportConfig.LastTimestampHost.Host) == "NONE" {
@@ -287,7 +287,7 @@ func Read(path string) (*Config, error) {
 			if err != nil {
 				return nil, fmt.Errorf("error processing TLS settings for last-timestamp-host of export config %v: %+v", exportName, err)
 			} else {
-				log.Infof("TLS settings for last-timestamp-host of export config %v processed successfully", exportName)
+				log.WithField("export", exportName).Info("TLS settings for last-timestamp-host of export config processed successfully")
 			}
 		}
 	}
@@ -304,7 +304,7 @@ func enrichFromEnvironmentVariables(config *Config) {
 		config.General.NamespaceName = os.Getenv("NAMESPACE")
 		config.General.PodName = os.Getenv("HOSTNAME")
 		config.General.ContainerName = os.Getenv("CONTAINER_NAME")
-		log.Infof("Values for push cloud labels were set up : %v, %v, %v", config.General.NamespaceName, config.General.PodName, config.General.ContainerName)
+		log.WithFields(log.Fields{"namespace_name": config.General.NamespaceName, "pod_name": config.General.PodName, "container_name": config.General.ContainerName}).Info("Values for push cloud labels were set up")
 	}
 
 	for _, datasource := range config.Datasources {
@@ -423,16 +423,16 @@ func processHiddenFields(config *Config) {
 
 	if config.General.GMQueueSelfMonSize == "" {
 		config.General.GMQueueSelfMonSizeParsed = GM_QUEUE_SELF_MON_SIZE_DEFAULT
-		log.Infof("gm-queue-self-mon-size is empty, using the default value %v for the queue", GM_QUEUE_SELF_MON_SIZE_DEFAULT)
+		log.WithField("gm_queue_self_mon_size_default", GM_QUEUE_SELF_MON_SIZE_DEFAULT).Info("gm-queue-self-mon-size is empty, using the default value for the queue")
 	} else {
 		val, err := strconv.ParseInt(config.General.GMQueueSelfMonSize, 10, 64)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing gm-queue-self-mon-size default value %v will be used : %+v", GM_QUEUE_SELF_MON_SIZE_DEFAULT, err)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"gm_queue_self_mon_size_default": GM_QUEUE_SELF_MON_SIZE_DEFAULT, "error": err}).Error("Error parsing gm-queue-self-mon-size, the default value will be used")
 			config.General.GMQueueSelfMonSizeParsed = GM_QUEUE_SELF_MON_SIZE_DEFAULT
 		} else {
-			log.Infof("gm-queue-self-mon-size %v parsed successfully", val)
+			log.WithField("val", val).Info("gm-queue-self-mon-size parsed successfully")
 			if val < 0 || val > math.MaxInt32 {
-				log.WithField(ec.FIELD, ec.LME_8104).Errorf("gm-queue-self-mon-size can not be out of range [0 ; %v], default value %v will be used instead", math.MaxInt32, GM_QUEUE_SELF_MON_SIZE_DEFAULT)
+				log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"max_int32": math.MaxInt32, "gm_queue_self_mon_size_default": GM_QUEUE_SELF_MON_SIZE_DEFAULT}).Error("gm-queue-self-mon-size can not be out of range, the default value will be used instead")
 				config.General.GMQueueSelfMonSizeParsed = GM_QUEUE_SELF_MON_SIZE_DEFAULT
 			} else {
 				config.General.GMQueueSelfMonSizeParsed = int(val)
@@ -444,16 +444,16 @@ func processHiddenFields(config *Config) {
 
 	if config.General.LTSRetryCount == "" {
 		config.General.LTSRetryCountParsed = LAST_TIMESTAMP_RETRY_COUNT_DEFAULT
-		log.Infof("last-timestamp-retry-count is empty, using the default value %v", LAST_TIMESTAMP_RETRY_COUNT_DEFAULT)
+		log.WithField("last_timestamp_retry_count_default", LAST_TIMESTAMP_RETRY_COUNT_DEFAULT).Info("last-timestamp-retry-count is empty, using the default value")
 	} else {
 		val, err := strconv.ParseInt(config.General.LTSRetryCount, 10, 64)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing last-timestamp-retry-count default value %v will be used : %+v", LAST_TIMESTAMP_RETRY_COUNT_DEFAULT, err)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"last_timestamp_retry_count_default": LAST_TIMESTAMP_RETRY_COUNT_DEFAULT, "error": err}).Error("Error parsing last-timestamp-retry-count, the default value will be used")
 			config.General.LTSRetryCountParsed = LAST_TIMESTAMP_RETRY_COUNT_DEFAULT
 		} else {
-			log.Infof("last-timestamp-retry-count %v parsed successfully", val)
+			log.WithField("val", val).Info("last-timestamp-retry-count parsed successfully")
 			if val < 0 || val > math.MaxInt32 {
-				log.WithField(ec.FIELD, ec.LME_8104).Errorf("last-timestamp-retry-count can not be out of range [0 ; %v], default value %v will be used instead", math.MaxInt32, LAST_TIMESTAMP_RETRY_COUNT_DEFAULT)
+				log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"max_int32": math.MaxInt32, "last_timestamp_retry_count_default": LAST_TIMESTAMP_RETRY_COUNT_DEFAULT}).Error("last-timestamp-retry-count can not be out of range, the default value will be used instead")
 				config.General.LTSRetryCountParsed = LAST_TIMESTAMP_RETRY_COUNT_DEFAULT
 			} else {
 				config.General.LTSRetryCountParsed = int(val)
@@ -463,14 +463,14 @@ func processHiddenFields(config *Config) {
 
 	if config.General.LTSRetryPeriod == "" {
 		config.General.LTSRetryPeriodParsed = LAST_TIMESTAMP_RETRY_PERIOD_DEFAULT
-		log.Infof("last-timestamp-retry-period is empty, using the default value %v", LAST_TIMESTAMP_RETRY_PERIOD_DEFAULT)
+		log.WithField("last_timestamp_retry_period_default", LAST_TIMESTAMP_RETRY_PERIOD_DEFAULT).Info("last-timestamp-retry-period is empty, using the default value")
 	} else {
 		val, err := time.ParseDuration(config.General.LTSRetryPeriod)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing last-timestamp-retry-period default value %v will be used : %+v", LAST_TIMESTAMP_RETRY_PERIOD_DEFAULT, err)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"last_timestamp_retry_period_default": LAST_TIMESTAMP_RETRY_PERIOD_DEFAULT, "error": err}).Error("Error parsing last-timestamp-retry-period, the default value will be used")
 			config.General.LTSRetryPeriodParsed = LAST_TIMESTAMP_RETRY_PERIOD_DEFAULT
 		} else {
-			log.Infof("last-timestamp-retry-period %+v parsed successfully", val)
+			log.WithField("val", val).Info("last-timestamp-retry-period parsed successfully")
 			config.General.LTSRetryPeriodParsed = val
 		}
 	}
@@ -481,14 +481,14 @@ func processHiddenFields(config *Config) {
 
 	if config.General.DatasourceRetryPeriod == "" {
 		config.General.DatasourceRetryPeriodParsed = DATASOURCE_RETRY_PERIOD_DEFAULT
-		log.Infof("datasource-retry-period is empty, using the default value %v", DATASOURCE_RETRY_PERIOD_DEFAULT)
+		log.WithField("datasource_retry_period_default", DATASOURCE_RETRY_PERIOD_DEFAULT).Info("datasource-retry-period is empty, using the default value")
 	} else {
 		val, err := time.ParseDuration(config.General.DatasourceRetryPeriod)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing datasource-retry-period default value %v will be used : %+v", DATASOURCE_RETRY_PERIOD_DEFAULT, err)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"datasource_retry_period_default": DATASOURCE_RETRY_PERIOD_DEFAULT, "error": err}).Error("Error parsing datasource-retry-period, the default value will be used")
 			config.General.DatasourceRetryPeriodParsed = DATASOURCE_RETRY_PERIOD_DEFAULT
 		} else {
-			log.Infof("datasource-retry-period %+v parsed successfully", val)
+			log.WithField("val", val).Info("datasource-retry-period parsed successfully")
 			config.General.DatasourceRetryPeriodParsed = val
 		}
 	}
@@ -499,14 +499,14 @@ func processHiddenFields(config *Config) {
 
 	if config.General.PushRetryPeriod == "" {
 		config.General.PushRetryPeriodParsed = PUSH_RETRY_PERIOD_DEFAULT
-		log.Infof("push-retry-period is empty, using the default value %v", PUSH_RETRY_PERIOD_DEFAULT)
+		log.WithField("push_retry_period_default", PUSH_RETRY_PERIOD_DEFAULT).Info("push-retry-period is empty, using the default value")
 	} else {
 		val, err := time.ParseDuration(config.General.PushRetryPeriod)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing push-retry-period default value %v will be used : %+v", PUSH_RETRY_PERIOD_DEFAULT, err)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"push_retry_period_default": PUSH_RETRY_PERIOD_DEFAULT, "error": err}).Error("Error parsing push-retry-period, the default value will be used")
 			config.General.PushRetryPeriodParsed = PUSH_RETRY_PERIOD_DEFAULT
 		} else {
-			log.Infof("push-retry-period %+v parsed successfully", val)
+			log.WithField("val", val).Info("push-retry-period parsed successfully")
 			config.General.PushRetryPeriodParsed = val
 		}
 	}
@@ -514,16 +514,16 @@ func processHiddenFields(config *Config) {
 	for queryName, queryConfig := range config.Queries {
 		if queryConfig.GTSQueueSize == "" {
 			queryConfig.GTSQueueSizeParsed = GTS_QUEUE_SIZE_DEFAULT
-			log.Infof("For query %v gts-queue-size is empty, using the default value %v for the queue", queryName, GTS_QUEUE_SIZE_DEFAULT)
+			log.WithFields(log.Fields{"query": queryName, "gts_queue_size_default": GTS_QUEUE_SIZE_DEFAULT}).Info("gts-queue-size is empty, using the default value for the queue")
 		} else {
 			val, err := strconv.ParseInt(queryConfig.GTSQueueSize, 10, 64)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing gts-queue-size for query %v, default value %v will be used : %+v", queryName, GTS_QUEUE_SIZE_DEFAULT, err)
+				log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"query": queryName, "gts_queue_size_default": GTS_QUEUE_SIZE_DEFAULT, "error": err}).Error("Error parsing gts-queue-size, the default value will be used")
 				queryConfig.GTSQueueSizeParsed = GTS_QUEUE_SIZE_DEFAULT
 			} else {
-				log.Infof("For query %v gts-queue-size %v parsed successfully", queryName, val)
+				log.WithFields(log.Fields{"query": queryName, "val": val}).Info("gts-queue-size parsed successfully")
 				if val < 0 || val > math.MaxInt32 {
-					log.WithField(ec.FIELD, ec.LME_8104).Errorf("For query %v gts-queue-size can not be out of range [0 ; %v], default value %v will be used instead", queryName, math.MaxInt32, GTS_QUEUE_SIZE_DEFAULT)
+					log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"query": queryName, "max_int32": math.MaxInt32, "gts_queue_size_default": GTS_QUEUE_SIZE_DEFAULT}).Error("gts-queue-size can not be out of range, the default value will be used instead")
 					queryConfig.GTSQueueSizeParsed = GTS_QUEUE_SIZE_DEFAULT
 				} else {
 					queryConfig.GTSQueueSizeParsed = int(val)
@@ -533,16 +533,16 @@ func processHiddenFields(config *Config) {
 
 		if queryConfig.GDQueueSize == "" {
 			queryConfig.GDQueueSizeParsed = GD_QUEUE_SIZE_DEFAULT
-			log.Infof("For query %v gd-queue-size is empty, using the default value %v for the queue", queryName, GD_QUEUE_SIZE_DEFAULT)
+			log.WithFields(log.Fields{"query": queryName, "gd_queue_size_default": GD_QUEUE_SIZE_DEFAULT}).Info("gd-queue-size is empty, using the default value for the queue")
 		} else {
 			val, err := strconv.ParseInt(queryConfig.GDQueueSize, 10, 64)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing gd-queue-size for query %v, default value %v will be used : %+v", queryName, GD_QUEUE_SIZE_DEFAULT, err)
+				log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"query": queryName, "gd_queue_size_default": GD_QUEUE_SIZE_DEFAULT, "error": err}).Error("Error parsing gd-queue-size, the default value will be used")
 				queryConfig.GDQueueSizeParsed = GD_QUEUE_SIZE_DEFAULT
 			} else {
-				log.Infof("For query %v gd-queue-size %v parsed successfully", queryName, val)
+				log.WithFields(log.Fields{"query": queryName, "val": val}).Info("gd-queue-size parsed successfully")
 				if val < 0 || val > math.MaxInt32 {
-					log.WithField(ec.FIELD, ec.LME_8104).Errorf("For query %v gd-queue-size can not be out of range [0 ; %v], default value %v will be used instead", queryName, math.MaxInt32, GD_QUEUE_SIZE_DEFAULT)
+					log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"query": queryName, "max_int32": math.MaxInt32, "gd_queue_size_default": GD_QUEUE_SIZE_DEFAULT}).Error("gd-queue-size can not be out of range, the default value will be used instead")
 					queryConfig.GDQueueSizeParsed = GD_QUEUE_SIZE_DEFAULT
 				} else {
 					queryConfig.GDQueueSizeParsed = int(val)
@@ -552,16 +552,16 @@ func processHiddenFields(config *Config) {
 
 		if queryConfig.GMQueueSize == "" {
 			queryConfig.GMQueueSizeParsed = GM_QUEUE_SIZE_DEFAULT
-			log.Infof("For query %v gm-queue-size is empty, using the default value %v for the queue", queryName, GM_QUEUE_SIZE_DEFAULT)
+			log.WithFields(log.Fields{"query": queryName, "gm_queue_size_default": GM_QUEUE_SIZE_DEFAULT}).Info("gm-queue-size is empty, using the default value for the queue")
 		} else {
 			val, err := strconv.ParseInt(queryConfig.GMQueueSize, 10, 64)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing gm-queue-size for query %v, default value %v will be used : %+v", queryName, GM_QUEUE_SIZE_DEFAULT, err)
+				log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"query": queryName, "gm_queue_size_default": GM_QUEUE_SIZE_DEFAULT, "error": err}).Error("Error parsing gm-queue-size, the default value will be used")
 				queryConfig.GMQueueSizeParsed = GM_QUEUE_SIZE_DEFAULT
 			} else {
-				log.Infof("For query %v gm-queue-size %v parsed successfully", queryName, val)
+				log.WithFields(log.Fields{"query": queryName, "val": val}).Info("gm-queue-size parsed successfully")
 				if val < 0 || val > math.MaxInt32 {
-					log.WithField(ec.FIELD, ec.LME_8104).Errorf("For query %v gm-queue-size can not be out of range [0 ; %v], default value %v will be used instead", queryName, math.MaxInt32, GM_QUEUE_SIZE_DEFAULT)
+					log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"query": queryName, "max_int32": math.MaxInt32, "gm_queue_size_default": GM_QUEUE_SIZE_DEFAULT}).Error("gm-queue-size can not be out of range, the default value will be used instead")
 					queryConfig.GMQueueSizeParsed = GM_QUEUE_SIZE_DEFAULT
 				} else {
 					queryConfig.GMQueueSizeParsed = int(val)
@@ -571,14 +571,14 @@ func processHiddenFields(config *Config) {
 
 		if queryConfig.MaxHistoryLookup == "" {
 			queryConfig.MaxHistoryLookupDuration = MAX_HISTORY_LOOKUP_DURATION
-			log.Infof("For query %v max-history-lookup is empty, using the default value %v", queryName, MAX_HISTORY_LOOKUP_DURATION)
+			log.WithFields(log.Fields{"query": queryName, "max_history_lookup_duration": MAX_HISTORY_LOOKUP_DURATION}).Info("max-history-lookup is empty, using the default value")
 		} else {
 			interval, err := time.ParseDuration(queryConfig.MaxHistoryLookup)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing max-history-lookup for query %v, default value %v will be used : %+v", queryName, MAX_HISTORY_LOOKUP_DURATION, err)
+				log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"query": queryName, "max_history_lookup_duration": MAX_HISTORY_LOOKUP_DURATION, "error": err}).Error("Error parsing max-history-lookup, the default value will be used")
 				queryConfig.MaxHistoryLookupDuration = MAX_HISTORY_LOOKUP_DURATION
 			} else {
-				log.Infof("For query %v max-history-lookup %v parsed successfully", queryName, queryConfig.MaxHistoryLookup)
+				log.WithFields(log.Fields{"query": queryName, "max_history_lookup": queryConfig.MaxHistoryLookup}).Info("max-history-lookup parsed successfully")
 				queryConfig.MaxHistoryLookupDuration = interval
 			}
 		}
@@ -587,22 +587,22 @@ func processHiddenFields(config *Config) {
 	for queryName, queryConfig := range config.Queries {
 		timerange, err := time.ParseDuration(queryConfig.Timerange)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error parsing timerange duration %v for query %v : %+v", queryConfig.Timerange, queryName, err)
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"timerange": queryConfig.Timerange, "query": queryName, "error": err}).Error("Error parsing timerange duration")
 			timerange = -1
 		}
 		queryConfig.TimerangeDuration = timerange
 
 		if len(queryConfig.Interval) == 0 {
 			if lastTimestampServicesCount > 0 {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Interval duration is empty for query %v", queryName)
+				log.WithField(ec.FIELD, ec.LME_8102).WithField("query", queryName).Error("Interval duration is empty")
 			} else {
-				log.Infof("For query %v interval is empty", queryName)
+				log.WithField("query", queryName).Info("Interval is empty")
 			}
 			queryConfig.IntervalDuration = -1
 		} else {
 			interval, err := time.ParseDuration(queryConfig.Interval)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error parsing interval duration %v for query %v : %+v", queryConfig.Interval, queryName, err)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"interval": queryConfig.Interval, "query": queryName, "error": err}).Error("Error parsing interval duration")
 				interval = -1
 			}
 			queryConfig.IntervalDuration = interval
@@ -610,7 +610,7 @@ func processHiddenFields(config *Config) {
 
 		queryLag, err := time.ParseDuration(queryConfig.QueryLag)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error parsing time lag duration %v for query %v : %+v", queryConfig.QueryLag, queryName, err)
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query_lag": queryConfig.QueryLag, "query": queryName, "error": err}).Error("Error parsing the time lag duration")
 			queryLag = -1
 		}
 		queryConfig.QueryLagDuration = queryLag
@@ -620,21 +620,21 @@ func processHiddenFields(config *Config) {
 		for enrichIndex, enrich := range queryConfig.Enrich {
 			if enrich.Regexp == "" {
 				queryConfig.Enrich[enrichIndex].RegexpCompiled = nil
-				log.Infof("For query %v enrich %v regexp is not defined", queryName, enrichIndex)
+				log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex}).Info("Enrich regexp is not defined")
 			} else {
 				pattern, err := regexp.Compile(enrich.Regexp)
 				if err != nil {
-					log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error processing hidden fields for query %v enrich %v : Regexp %v compilation returned error: %+v . Metric configuration is invalid and query won't be executed", queryName, enrichIndex, enrich.Regexp, err)
+					log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "regexp": enrich.Regexp, "error": err}).Error("Error processing hidden fields, regexp compilation failed. Metric configuration is invalid and the query won't be executed")
 					queryConfig.IsInvalid = true
 				} else {
 					queryConfig.Enrich[enrichIndex].RegexpCompiled = pattern
-					log.Infof("For query %v enrich %v regexp %v was successfully compiled", queryName, enrichIndex, enrich.Regexp)
+					log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "regexp": enrich.Regexp}).Info("Enrich regexp was successfully compiled")
 				}
 			}
 			for destFieldIndex, destField := range enrich.DestFields {
 				enrich.DestFields[destFieldIndex].TemplateCompiled = []byte(destField.Template)
-				log.Infof("For query %v enrich %v and destField %v template %v was successfully added", queryName, enrichIndex, destFieldIndex, destField.Template)
-				log.Infof("For query %v enrich %v and destField %v defaultValue %v is configured", queryName, enrichIndex, destFieldIndex, destField.DefaultValue)
+				log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "dest_field_index": destFieldIndex, "template": destField.Template}).Info("Enrich destField template was successfully added")
+				log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "dest_field_index": destFieldIndex, "default_value": destField.DefaultValue}).Info("Enrich destField defaultValue is configured")
 			}
 		}
 	}
@@ -642,7 +642,7 @@ func processHiddenFields(config *Config) {
 	for queryName, queryConfig := range config.Queries {
 		res, err := json.Marshal(queryConfig.FieldsInOrder)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error marshalling FieldsInOrder for query %v : %+v", queryName, err)
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "error": err}).Error("Error marshalling FieldsInOrder")
 		} else {
 			queryConfig.FieldsInOrderJson = string(res)
 		}
@@ -650,7 +650,7 @@ func processHiddenFields(config *Config) {
 		if len(queryConfig.Streams) > 0 {
 			res, err = json.Marshal(queryConfig.Streams)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error marshalling Streams for query %v : %+v", queryName, err)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "error": err}).Error("Error marshalling Streams")
 			} else {
 				queryConfig.StreamsJson = "\"streams\": " + string(res) + ","
 			}
@@ -658,7 +658,7 @@ func processHiddenFields(config *Config) {
 
 		res, err = json.Marshal(queryConfig.QueryString)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error marshalling QueryString for query %v : %+v", queryName, err)
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "error": err}).Error("Error marshalling QueryString")
 		} else {
 			queryConfig.QueryStringJson = string(res)
 		}
@@ -677,10 +677,10 @@ func processHiddenFields(config *Config) {
 			}
 			if mvfc.Separator == "" {
 				metric.MultiValueFields[i].Separator = ","
-				log.Infof("For metric %v separator is empty for multi-value field configuration %v, default value ',' will be used as a separator", metricName, i)
+				log.WithFields(log.Fields{"metric": metricName, "i": i}).Info("Separator is empty for the multi-value field configuration, the default value ',' will be used as a separator")
 			}
 		}
-		log.Infof("For metric %v found labels : %+v", metricName, metric.Labels)
+		log.WithFields(log.Fields{"metric": metricName, "labels": metric.Labels}).Info("Found labels for the metric")
 	}
 
 	for metricName, metric := range config.Metrics {
@@ -688,29 +688,29 @@ func processHiddenFields(config *Config) {
 			continue
 		}
 		if metric.Operation != "duration" {
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v has operation %v, child metrics are not supported for this type and will be ignored", metricName, metric.Operation)
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"metric": metricName, "operation": metric.Operation}).Error("Child metrics are not supported for this operation type and will be ignored")
 			continue
 		}
 		for _, childMetricName := range metric.ChildMetrics {
-			log.Infof("Metric %v has child %v", metricName, childMetricName)
+			log.WithFields(log.Fields{"metric": metricName, "child_metric_name": childMetricName}).Info("Metric has a child metric")
 			childMetricCfg := config.Metrics[childMetricName]
 			if childMetricCfg == nil {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v has non-existent child metric %v", metricName, childMetricName)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"metric": metricName, "child_metric_name": childMetricName}).Error("Metric has a non-existent child metric")
 				continue
 			}
 			switch childMetricCfg.Operation {
 			case "duration-no-response":
-				log.Infof("Metric %v has duration-no-response child metric %v", metricName, childMetricName)
+				log.WithFields(log.Fields{"metric": metricName, "child_metric_name": childMetricName}).Info("Metric has a duration-no-response child metric")
 				metric.HasDurationNoResponseChild = true
 			default:
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Child metric %v for metric %v has operation %v, child metrics of this type are not supported and will be ignored", childMetricName, metricName, metric.Operation)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"child_metric_name": childMetricName, "metric": metricName, "operation": metric.Operation}).Error("Child metrics of this operation type are not supported and will be ignored")
 			}
 		}
 	}
 
 	for mName, mCfg := range config.Metrics {
 		if !checkExpectedLabelsFields(mName, mCfg) {
-			log.Warnf("Expected labels for metric %v were reset to nil", mName)
+			log.WithField("m_name", mName).Warn("Expected labels for the metric were reset to nil")
 			mCfg.ExpectedLabels = nil
 		}
 	}
@@ -748,10 +748,10 @@ func processCrypto(path string, config *Config) error {
 			dsConfig.DecryptedPassword = dsConfig.Password
 			encryptedPassword, err := cryptoService.Encrypt([]byte(dsConfig.DecryptedPassword))
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_1603).Errorf("Failed to encrypt password for %v : %+v", dsName, err)
+				log.WithField(ec.FIELD, ec.LME_1603).WithFields(log.Fields{"datasource": dsName, "error": err}).Error("Failed to encrypt the password")
 			} else {
 				dsConfig.Password = enc_prefix + encryptedPassword
-				log.Infof("Password encrypted successfully for %v", dsName)
+				log.WithField("datasource", dsName).Info("Password encrypted successfully")
 				configModified = true
 			}
 		} else {
@@ -760,20 +760,20 @@ func processCrypto(path string, config *Config) error {
 			}
 			dsConfig.DecryptedPassword, err = cryptoService.Decrypt([]byte(dsConfig.Password[len(enc_prefix):]))
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_1603).Errorf("Failed to decrypt password for %v", dsName)
+				log.WithField(ec.FIELD, ec.LME_1603).WithField("datasource", dsName).Error("Failed to decrypt the password")
 			} else {
-				log.Infof("Password decrypted successfully for %v", dsName)
+				log.WithField("datasource", dsName).Info("Password decrypted successfully")
 			}
 		}
 	}
 
 	if configModified {
-		log.Infof("Modifying %v ...", path)
+		log.WithField("path", path).Info("Modifying the config file")
 		err = writeConfigToFile(path, *config)
 		if err != nil {
 			return fmt.Errorf("error modifying %v : %+v", path, err)
 		} else {
-			log.Infof("Config %v modified successfully", path)
+			log.WithField("path", path).Info("Config modified successfully")
 		}
 	}
 
@@ -828,7 +828,7 @@ func writeConfigToFile(path string, cfg Config) error {
 	}
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, perms)
 	defer func() {
-		log.Infof("File %v closed", path)
+		log.WithField("path", path).Info("File closed")
 		_ = f.Close()
 	}()
 	if err != nil {
@@ -854,7 +854,7 @@ func getOrCreateKey() (key []byte, new bool, err error) {
 	defer func() {
 		if file != nil {
 			if err := file.Close(); err != nil {
-				log.Errorf("error closing file %v : %+v", *keyPath, err)
+				log.WithFields(log.Fields{"path": *keyPath, "error": err}).Error("Error closing the key file")
 			}
 		}
 	}()
@@ -865,14 +865,14 @@ func getOrCreateKey() (key []byte, new bool, err error) {
 	buf := bytes.Buffer{}
 	length, err := io.Copy(&buf, file)
 	if err != nil {
-		log.Infof("Error copying key-file %v, probably it doesn't exist : %+v", *keyPath, err)
+		log.WithFields(log.Fields{"key_path": *keyPath, "error": err}).Info("Error copying the key-file, probably it doesn't exist")
 	} else {
-		log.Debugf("Copied %v bytes successfully to the buffer from key-file %v", length, *keyPath)
+		log.WithFields(log.Fields{"length": length, "key_path": *keyPath}).Debug("Copied key-file contents to the buffer")
 	}
 
 	encodedKey := buf.String()
 	if len(encodedKey) != 0 {
-		log.Infof("Key file is not empty. Using key from the file %v", *keyPath)
+		log.WithField("key_path", *keyPath).Info("Key file is not empty, using the key from the file")
 		key, err := base64.StdEncoding.DecodeString(encodedKey)
 		if err != nil {
 			return nil, false, err
@@ -880,7 +880,7 @@ func getOrCreateKey() (key []byte, new bool, err error) {
 		return key, false, nil
 	}
 
-	log.Infof("Key file is empty. Generating new key and writing it to %v...", *keyPath)
+	log.WithField("key_path", *keyPath).Info("Key file is empty, generating a new key and writing it to the file")
 	newKey, err := randStringBytes(keySize)
 	if err != nil {
 		return nil, false, fmt.Errorf("error generating crypto key %+v", err)
@@ -898,7 +898,7 @@ func getOrCreateKey() (key []byte, new bool, err error) {
 	if err != nil {
 		return nil, false, fmt.Errorf("error writing file %v : %+v", *keyPath, err)
 	}
-	log.Infof("Key file generated successfully and written to %v", *keyPath)
+	log.WithField("key_path", *keyPath).Info("Key file generated successfully and written to the file")
 	return newKey, true, nil
 }
 
@@ -915,12 +915,12 @@ func checkExpectedLabelsFields(mName string, mCfg *MetricsConfig) bool {
 	labelsCount := len(mCfg.Labels)
 	for itemNum, expectedLabelsItem := range mCfg.ExpectedLabels {
 		if len(expectedLabelsItem) != labelsCount {
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Invalid expected labels configuration for metric %v, itemNum %v : Metric has %v labels defined while in expected labels item %v labels defined", mName, itemNum, labelsCount, len(expectedLabelsItem))
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"m_name": mName, "item_num": itemNum, "labels_count": labelsCount, "expected_labels_item_count": len(expectedLabelsItem)}).Error("Invalid expected labels configuration, the metric and the expected labels item define a different number of labels")
 			return false
 		}
 		for _, labelName := range mCfg.Labels {
 			if len(expectedLabelsItem[labelName]) == 0 {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Invalid expected labels configuration for metric %v, itemNum %v : Metric has label %v defined while in expected labels this label is not defined", mName, itemNum, labelName)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"m_name": mName, "item_num": itemNum, "label_name": labelName}).Error("Invalid expected labels configuration, the metric defines a label that is not defined in expected labels")
 				return false
 			}
 		}

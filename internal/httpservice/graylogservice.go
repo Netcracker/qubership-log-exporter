@@ -66,7 +66,7 @@ func (g *GraylogService) Query(qName string, startTime time.Time, endTime time.T
 	now := time.Now()
 	var err error
 	defer func() {
-		log.Debugf("GraylogService : For query %v request executed and csv processed in %+v", qName, time.Since(now))
+		log.WithFields(log.Fields{"query": qName, "duration": time.Since(now)}).Debug("GraylogService : Request executed and csv processed")
 		if err != nil {
 			selfMonitorIncErrorCodeCount(qName, now)
 		} else {
@@ -90,7 +90,7 @@ func (g *GraylogService) queryGraylog(qName string, startTime time.Time, endTime
 	startTimeStr := startTime.Format("2006-01-02T15:04:05Z07:00")
 	endTimeStr := endTime.Format("2006-01-02T15:04:05Z07:00")
 	requestBody := fmt.Sprintf(graylogJsonTemplate, qCfg.StreamsJson, qCfg.QueryStringJson, startTimeStr, endTimeStr, qCfg.FieldsInOrderJson)
-	log.Debugf("GraylogService : For query %v requestBody is %v", qName, requestBody)
+	log.WithFields(log.Fields{"query": qName, "request_body": requestBody}).Debug("GraylogService : Request body is prepared")
 
 	var transport http.RoundTripper = &http.Transport{
 		DialContext: (&net.Dialer{
@@ -121,25 +121,25 @@ func (g *GraylogService) queryGraylog(qName string, startTime time.Time, endTime
 	if resp.Body != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.Errorf("GraylogService : Error closing response body : %+v", err)
+				log.WithField("error", err).Error("GraylogService : Error closing response body")
 			}
 		}()
 	}
 
-	log.Debugf("GraylogService : For query %v received response : %+v", qName, resp)
+	log.WithFields(log.Fields{"query": qName, "response": resp}).Debug("GraylogService : Received response")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", ec.LME_7100, fmt.Errorf("GraylogService : For query %v to %v error reading body : %+v", qName, graylogEndpoint, err)
 	}
 	result := string(body)
-	log.Infof("GraylogService : For query %v to %v response status is %v, body length is %v", qName, graylogEndpoint, resp.Status, len(result))
+	log.WithFields(log.Fields{"query": qName, "graylog_endpoint": graylogEndpoint, "status": resp.Status, "result_count": len(result)}).Info("GraylogService : Received response from graylog")
 	if resp.StatusCode != 200 {
-		log.WithField(ec.FIELD, ec.LME_7102).Errorf("GraylogService : For query %v received response with status code %v from graylog, response body (limited) : %v", qName, resp.StatusCode, utils.GetLimitedPrefix(result, 10000))
+		log.WithField(ec.FIELD, ec.LME_7102).WithFields(log.Fields{"query": qName, "status_code": resp.StatusCode, "response_preview": utils.GetLimitedPrefix(result, 10000)}).Error("GraylogService : Received response with an error status code from graylog")
 		if resp.StatusCode >= 400 {
 			return "", ec.LME_7101, fmt.Errorf("GraylogService : For query %v status code is %v", qName, resp.StatusCode)
 		}
 	}
-	log.Tracef("GraylogService : For query %v received response body : %v", qName, result)
+	log.WithFields(log.Fields{"query": qName, "result": result}).Trace("GraylogService : Received response body")
 
 	return result, "", nil
 }
@@ -152,7 +152,7 @@ func ProcessCsv(stringData string, qName string) ([][]string, string, error) {
 		resError := fmt.Errorf("GraylogService : For query %v got error reading csv : %+v", qName, err)
 		return make([][]string, 0), ec.LME_7103, resError
 	}
-	log.Tracef("GraylogService : For query %v got records : %v", qName, records)
+	log.WithFields(log.Fields{"query": qName, "records": records}).Trace("GraylogService : Got records from the csv response")
 	return records, "", nil
 }
 

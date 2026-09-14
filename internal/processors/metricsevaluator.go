@@ -75,25 +75,25 @@ func (mep *MetricsEvaluationProcessor) Start() {
 }
 
 func (mep *MetricsEvaluationProcessor) startGoroutine(queryName string) {
-	defer log.Infof("MetricsEvaluationProcessor : Goroutine for query %v is finished", queryName)
+	defer log.WithField("query", queryName).Info("MetricsEvaluationProcessor : Goroutine for the query is finished")
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("MetricsEvaluationProcessor : Panic during evaluation for query %v : %+v ; Stacktrace of the panic : %v", queryName, rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"query": queryName, "panic": rec, "stacktrace": string(debug.Stack())}).Error("MetricsEvaluationProcessor : Panic during evaluation for the query")
 			time.Sleep(time.Second * 5)
-			log.Infof("MetricsEvaluationProcessor : Starting gouroutine for query %v again ...", queryName)
+			log.WithField("query", queryName).Info("MetricsEvaluationProcessor : Starting goroutine for the query again ...")
 			go mep.startGoroutine(queryName)
 			mep.selfMonitorIncPanicRecoveries(queryName, 1.0, time.Now())
 		}
 	}()
-	log.Infof("MetricsEvaluationProcessor : Goroutine for query %v is started", queryName)
+	log.WithField("query", queryName).Info("MetricsEvaluationProcessor : Goroutine for the query is started")
 	for {
 		graylogData, ok := mep.gdQueue.Get(queryName)
 		if !ok {
-			log.WithField(ec.FIELD, ec.LME_1621).Errorf("MetricsEvaluationProcessor : Chan is closed for the query %v, stopping goroutine", queryName)
+			log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("MetricsEvaluationProcessor : Chan is closed for the query, stopping goroutine")
 			return
 		}
 		if graylogData == nil {
-			log.WithField(ec.FIELD, ec.LME_1604).Errorf("MetricsEvaluationProcessor : Nil graylogData received for query %v", queryName)
+			log.WithField(ec.FIELD, ec.LME_1604).WithField("query", queryName).Error("MetricsEvaluationProcessor : Nil graylogData received for the query")
 			continue
 		}
 		enrichers.Enrich(queryName, graylogData, mep.appConfig.Queries[queryName])
@@ -128,7 +128,7 @@ func (mep *MetricsEvaluationProcessor) initMetric(metricName string, queryName s
 	deRegistry := mep.deRegistry
 	metricCfg := appConfig.Metrics[metricName]
 	if metricCfg == nil {
-		log.Errorf("Metric %v doesn't have configuration, but query %v references to the metric. The metric initialization is skipped.", metricName, queryName)
+		log.WithFields(log.Fields{"metric": metricName, "query": queryName}).Error("The metric doesn't have configuration, but the query references it. The metric initialization is skipped.")
 		return
 	}
 	labelsList := metricCfg.Labels
@@ -145,7 +145,7 @@ func (mep *MetricsEvaluationProcessor) initMetric(metricName string, queryName s
 		)
 		deRegistry.MustRegister(queryName, gaugeVec)
 		mep.gaugeVecs[metricName] = gaugeVec
-		log.Infof("gaugeVec %v registered with labels %+v and constLabels %+v", metricName, labelsList, constLabels)
+		log.WithFields(log.Fields{"metric": metricName, "labels_list": labelsList, "const_labels": constLabels}).Info("gaugeVec registered")
 	case "counter":
 		counterVec := collectors.NewCustomCounter(
 			prometheus.NewDesc(
@@ -158,7 +158,7 @@ func (mep *MetricsEvaluationProcessor) initMetric(metricName string, queryName s
 		deRegistry.MustRegister(queryName, counterVec)
 		mep.counterVecs[metricName] = counterVec
 		initCounterMetric(metricCfg, metricName, counterVec)
-		log.Infof("counterVec %v registered with labels %+v and constLabels %+v", metricName, labelsList, constLabels)
+		log.WithFields(log.Fields{"metric": metricName, "labels_list": labelsList, "const_labels": constLabels}).Info("counterVec registered")
 	case "histogram":
 		customHistogram := collectors.NewCustomHistogram(
 			prometheus.NewDesc(
@@ -171,62 +171,62 @@ func (mep *MetricsEvaluationProcessor) initMetric(metricName string, queryName s
 		deRegistry.MustRegister(queryName, customHistogram)
 		mep.histogramVecs[metricName] = customHistogram
 		initHistogramMetric(metricCfg, metricName, customHistogram)
-		log.Infof("customHistogram %v registered with labels %+v", metricName, labelsList)
+		log.WithFields(log.Fields{"metric": metricName, "labels_list": labelsList}).Info("customHistogram registered")
 	default:
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v has not supported type %v", metricName, metricCfg.Type)
+		log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"metric": metricName, "metric_cfg_type": metricCfg.Type}).Error("The metric has an unsupported type")
 	}
 }
 
 func initCounterMetric(metricConfig *config.MetricsConfig, metricName string, counterVec *collectors.CustomCounter) {
 	initValue := metricConfig.Parameters["init-value"]
 	if initValue == "" {
-		log.Infof("Parameter init-value is not set for metric %v (counter)", metricName)
+		log.WithField("metric", metricName).Info("Parameter init-value is not set for the counter metric")
 		return
 	}
 	if len(metricConfig.Labels) == 0 {
 		if strings.ToUpper(initValue) == "NAN" {
 			counterVec.Add(math.NaN(), emptyStringMap, metricConfig.Labels, nil)
-			log.Infof("Metric %v is initialized with value NaN", metricName)
+			log.WithField("metric", metricName).Info("The metric is initialized with value NaN")
 		} else {
 			initValueFloat, err := strconv.ParseFloat(initValue, 64)
 			if err == nil {
 				if initValueFloat >= 0 {
 					counterVec.Add(initValueFloat, emptyStringMap, metricConfig.Labels, nil)
-					log.Infof("Metric %v is initialized with value %v", metricName, initValue)
+					log.WithFields(log.Fields{"metric": metricName, "init_value": initValue}).Info("The metric is initialized with the init value")
 				} else {
-					log.Warnf("Counter metric %v can not be initialized with negative value %v", metricName, initValue)
+					log.WithFields(log.Fields{"metric": metricName, "init_value": initValue}).Warn("The counter metric can not be initialized with a negative value")
 				}
 			} else {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error parsing init-value %v for metric %v : %+v", initValue, metricName, err)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"init_value": initValue, "metric": metricName, "error": err}).Error("Error parsing init-value for the metric")
 			}
 		}
 	} else if len(metricConfig.ExpectedLabels) > 0 {
 		initValueFloat, err := strconv.ParseFloat(initValue, 64)
 		if err == nil {
 			if initValueFloat < 0 {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Counter metric %v can not be initialized with negative value %v", metricName, initValue)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"metric": metricName, "init_value": initValue}).Error("The counter metric can not be initialized with a negative value")
 				return
 			}
 		} else {
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Error parsing init-value %v for metric %v : %+v", initValue, metricName, err)
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"init_value": initValue, "metric": metricName, "error": err}).Error("Error parsing init-value for the metric")
 			return
 		}
 		for itemNum, expectedLabelsItem := range metricConfig.ExpectedLabels {
 			cartesian := utils.LabelsCartesian(expectedLabelsItem)
-			log.Infof("For metric %v (itemNum %v) expected labels cartesian generated : %+v", metricName, itemNum, cartesian)
+			log.WithFields(log.Fields{"metric": metricName, "item_num": itemNum, "cartesian": cartesian}).Info("Expected labels cartesian generated for the metric")
 			for _, labels := range cartesian {
 				counterVec.Add(initValueFloat, labels, metricConfig.Labels, nil)
 			}
 		}
 	} else {
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v can not be initialized because it has labels and expected labels are not defined", metricName)
+		log.WithField(ec.FIELD, ec.LME_8102).WithField("metric", metricName).Error("The metric can not be initialized because it has labels and expected labels are not defined")
 	}
 }
 
 func initHistogramMetric(metricConfig *config.MetricsConfig, metricName string, customHistogram *collectors.CustomHistogram) {
 	initValue := metricConfig.Parameters["init-value"]
 	if initValue == "" {
-		log.Infof("Parameter init-value is not set for metric %v (histogram)", metricName)
+		log.WithField("metric", metricName).Info("Parameter init-value is not set for the histogram metric")
 		return
 	}
 	buckets := make(map[float64]uint64)
@@ -236,17 +236,17 @@ func initHistogramMetric(metricConfig *config.MetricsConfig, metricName string, 
 	buckets[math.Inf(1.0)] = 0
 	if len(metricConfig.Labels) == 0 {
 		customHistogram.Observe(0, 0, buckets, emptyStringMap, metricConfig.Labels, nil)
-		log.Infof("Histogram %v without labels is initialized", metricName)
+		log.WithField("metric", metricName).Info("The histogram without labels is initialized")
 	} else if len(metricConfig.ExpectedLabels) > 0 {
 		for itemNum, expectedLabelsItem := range metricConfig.ExpectedLabels {
 			cartesian := utils.LabelsCartesian(expectedLabelsItem)
-			log.Infof("For metric %v (itemNum %v) expected labels cartesian generated : %+v", metricName, itemNum, cartesian)
+			log.WithFields(log.Fields{"metric": metricName, "item_num": itemNum, "cartesian": cartesian}).Info("Expected labels cartesian generated for the metric")
 			for _, labels := range cartesian {
 				customHistogram.Observe(0, 0, buckets, labels, metricConfig.Labels, nil)
 			}
 		}
 	} else {
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v can not be initialized because it has labels and expected labels are not defined", metricName)
+		log.WithField(ec.FIELD, ec.LME_8102).WithField("metric", metricName).Error("The metric can not be initialized because it has labels and expected labels are not defined")
 	}
 }
 
@@ -296,13 +296,13 @@ func (mep *MetricsEvaluationProcessor) updateMetricBySeries(metricSeries []evalu
 			histogramVec := mep.histogramVecs[metric]
 			histValue := ms.HistValue
 			if histValue == nil {
-				log.WithField(ec.FIELD, ec.LME_1604).Errorf("Error evaluating histogram metric %v for labels %v : histValue is nil", metric, ms.Labels)
+				log.WithField(ec.FIELD, ec.LME_1604).WithFields(log.Fields{"metric": metric, "labels": ms.Labels}).Error("Error evaluating the histogram metric, histValue is nil")
 			} else {
 				histogramVec.Observe(histValue.Sum, histValue.Cnt, histValue.Buckets, ms.Labels, metricCfg.Labels, ms.Timestamp)
 			}
 		}
 	default:
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v has not supported type %v", metric, metricCfg.Type)
+		log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"metric": metric, "metric_cfg_type": metricCfg.Type}).Error("The metric has an unsupported type")
 	}
 }
 

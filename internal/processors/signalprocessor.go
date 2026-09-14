@@ -15,7 +15,6 @@
 package processors
 
 import (
-	"fmt"
 	ec "log_exporter/internal/utils/errorcodes"
 	"os"
 	"os/signal"
@@ -55,15 +54,14 @@ func (sp *SignalProcessor) interruptionHandler() {
 	sp.logRuntimeInfo()
 	sp.stopCroniter()
 
-	log.Infof("STOPPING LOG-EXPORTER (received %+v signal)", signal)
-	fmt.Printf("\nstop exporter, %v\n", sp.versionString())
+	log.WithFields(log.Fields{"signal": signal, "version_string": sp.versionString()}).Info("STOPPING LOG-EXPORTER, signal received")
 	os.Exit(0)
 }
 
 func (sp *SignalProcessor) quitHandler() {
 	for {
 		signal := <-sp.osQuitSignals
-		log.Infof("Received %+v signal, printing thread dumps...", signal)
+		log.WithField("signal", signal).Info("Signal received, printing thread dumps")
 		sp.logRuntimeInfo()
 	}
 }
@@ -71,5 +69,5 @@ func (sp *SignalProcessor) quitHandler() {
 func (sp *SignalProcessor) logRuntimeInfo() {
 	buf := make([]byte, 1<<20)
 	stacklen := runtime.Stack(buf, true)
-	log.WithField(ec.FIELD, ec.LME_1607).Errorf("GOROUTINES DUMP: %s", buf[:stacklen])
+	log.WithField(ec.FIELD, ec.LME_1607).WithField("stacktrace", string(buf[:stacklen])).Error("GOROUTINES DUMP")
 }

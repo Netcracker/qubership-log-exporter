@@ -79,7 +79,7 @@ func GetCronParser() cron.Parser {
 	case "minute":
 		return cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 	default:
-		log.WithField(ec.FIELD, ec.LME_8104).Errorf("croniter-precision property has invalid value: %v . Default second precision will be applied for Parser", *croniterPrecision)
+		log.WithField(ec.FIELD, ec.LME_8104).WithField("croniter_precision", *croniterPrecision).Error("croniter-precision property has invalid value. Default second precision will be applied for Parser")
 		return cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 	}
 }
@@ -93,7 +93,7 @@ func GetCron() *cron.Cron {
 		log.Info("Cron with minute precision created")
 		return cron.New()
 	default:
-		log.WithField(ec.FIELD, ec.LME_8104).Errorf("croniter-precision property has invalid value: %v . Default second precision will be applied for Cron", *croniterPrecision)
+		log.WithField(ec.FIELD, ec.LME_8104).WithField("croniter_precision", *croniterPrecision).Error("croniter-precision property has invalid value. Default second precision will be applied for Cron")
 		return cron.New(cron.WithParser(cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)))
 	}
 }
@@ -334,7 +334,7 @@ func MaxFloat64InSlice(input []interface{}) (float64, error) {
 		str := fmt.Sprintf("%v", elem)
 		res, err := strconv.ParseFloat(str, 64)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_1609).Errorf("Error parsing elem %v to float : %+v", elem, err)
+			log.WithField(ec.FIELD, ec.LME_1609).WithFields(log.Fields{"elem": elem, "error": err}).Error("Error parsing elem to float")
 			continue
 		}
 		if !parsedOnce {

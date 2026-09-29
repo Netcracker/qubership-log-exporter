@@ -54,25 +54,25 @@ func (nrcp *NewRelicCallsProcessor) Start() {
 }
 
 func (nrcp *NewRelicCallsProcessor) startGoroutine(queryName string, queryConfig *config.QueryConfig) {
-	defer log.Infof("NewRelicCallsProcessor : Goroutine for query %v is finished", queryName)
+	defer log.WithField("query", queryName).Info("NewRelicCallsProcessor : Goroutine for the query is finished")
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("NewRelicCallsProcessor : Panic during execution of query %v : %+v ; Stacktrace of the panic : %v", queryName, rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"query": queryName, "panic": rec, "stacktrace": string(debug.Stack())}).Error("NewRelicCallsProcessor : Panic during execution of the query")
 			time.Sleep(time.Second * 5)
-			log.Infof("NewRelicCallsProcessor : Starting gouroutine for query %v again ...", queryName)
+			log.WithField("query", queryName).Info("NewRelicCallsProcessor : Starting goroutine for the query again ...")
 			go nrcp.startGoroutine(queryName, queryConfig)
 			nrcp.selfMonitorIncPanicRecoveries(queryName, 1.0, time.Now())
 		}
 	}()
-	log.Infof("NewRelicCallsProcessor : Goroutine for query %v is started", queryName)
+	log.WithField("query", queryName).Info("NewRelicCallsProcessor : Goroutine for the query is started")
 	for {
 		time, ok := nrcp.gtsQueue.Get(queryName)
 		if !ok {
-			log.WithField(ec.FIELD, ec.LME_1621).Errorf("NewRelicCallsProcessor : Chan is closed for the query %v, stopping goroutine", queryName)
+			log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("NewRelicCallsProcessor : Chan is closed for the query, stopping goroutine")
 			return
 		}
 		if time.IsZero() {
-			log.Infof("NewRelicCallsProcessor : Zero time received for query %v", queryName)
+			log.WithField("query", queryName).Info("NewRelicCallsProcessor : Zero time received for the query")
 			continue
 		}
 		nrcp.gdQueue.Put(queryName, nrcp.executeNewRelicQuery(queryName, queryConfig, time))
@@ -81,15 +81,15 @@ func (nrcp *NewRelicCallsProcessor) startGoroutine(queryName string, queryConfig
 
 func (nrcp *NewRelicCallsProcessor) executeNewRelicQuery(qName string, queryConfig *config.QueryConfig, startTime time.Time) *queues.GraylogData {
 	endTime := startTime.Add(queryConfig.TimerangeDuration)
-	log.Debugf("executeNewRelicQuery for query %v, startTime %v, endTime %v", qName, startTime, endTime)
+	log.WithFields(log.Fields{"query": qName, "start_time": startTime, "end_time": endTime}).Debug("executeNewRelicQuery")
 
 	queryResult, errc, err := nrcp.newRelicService.Query(qName, startTime, endTime)
 
 	for err != nil {
-		log.WithField(ec.FIELD, errc).Errorf("Error requesting newrelic for query %v : %+v", qName, err)
+		log.WithField(ec.FIELD, errc).WithFields(log.Fields{"query": qName, "error": err}).Error("Error requesting newrelic")
 		if *nrcp.appConfig.General.DatasourceRetry {
 			time.Sleep(nrcp.appConfig.General.DatasourceRetryPeriodParsed)
-			log.Infof("Retry requesting newrelic for query %v, startTime %v , endTime %v", qName, startTime, endTime)
+			log.WithFields(log.Fields{"query": qName, "start_time": startTime, "end_time": endTime}).Info("Retry requesting newrelic")
 			queryResult, errc, err = nrcp.newRelicService.Query(qName, startTime, endTime)
 		} else {
 			break

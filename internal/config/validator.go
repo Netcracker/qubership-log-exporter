@@ -94,7 +94,7 @@ func SimpleSilentRead(path string) (*Config, error) {
 		if configFile != nil {
 			defer func() {
 				if err := configFile.Close(); err != nil {
-					log.Errorf("error closing config file %v : %+v", path, err)
+					log.WithFields(log.Fields{"path": path, "error": err}).Error("Error closing the config file")
 				}
 			}()
 		}
@@ -202,7 +202,7 @@ func ValidateConfig(config *Config) error {
 	if len(startupBlockingErrors) != 0 {
 		log.WithField(ec.FIELD, ec.LME_8101).Error("Log-exporter can not start with the provided configuration, see reasons list below :")
 		for i, sbe := range startupBlockingErrors {
-			log.WithField(ec.FIELD, ec.LME_8101).Errorf("%v. %+v", i+1, sbe)
+			log.WithField(ec.FIELD, ec.LME_8101).WithFields(log.Fields{"index": i + 1, "error": sbe}).Error("Startup blocking error")
 		}
 		return fmt.Errorf("yaml config is invalid")
 	}
@@ -212,18 +212,18 @@ func ValidateConfig(config *Config) error {
 func performExportsNonBlockingChecks(config *Config) {
 	for exportName, exportConfig := range config.Exports {
 		if exportConfig == nil {
-			log.Warnf("Section exports : Export %v has empty configuration", exportName)
+			log.WithField("export", exportName).Warn("Section exports : Export has empty configuration")
 			continue
 		}
 		if exportConfig.Strategy == "push" || exportConfig.Strategy == "" {
 			if exportConfig.Host == "" {
-				log.Warnf("Section exports : Export %v with 'push' strategy must have field host specified", exportName)
+				log.WithField("export", exportName).Warn("Section exports : Export with 'push' strategy must have field host specified")
 			}
 			if exportConfig.Endpoint == "" {
-				log.Warnf("Section exports : Export %v with 'push' strategy must have field endpoint specified", exportName)
+				log.WithField("export", exportName).Warn("Section exports : Export with 'push' strategy must have field endpoint specified")
 			}
 			if exportConfig.LastTimestampHost != nil && exportConfig.LastTimestampHost.Host == "" {
-				log.Warnf("Section exports : Export %v with 'push' strategy must have field host specified for the last-timestamp-host subsection", exportName)
+				log.WithField("export", exportName).Warn("Section exports : Export with 'push' strategy must have field host specified for the last-timestamp-host subsection")
 			}
 		}
 	}
@@ -235,40 +235,40 @@ func performMetricsNonBlockingChecks(config *Config) {
 
 	for metricName, metricConfig := range config.Metrics {
 		if metricConfig == nil {
-			log.Warnf("Section metrics : Metric %v has empty configuration", metricName)
+			log.WithField("metric", metricName).Warn("Section metrics : Metric has empty configuration")
 			metricConfig = &MetricsConfig{}
 		}
 		for metricName := range config.Metrics {
 			if queryMetrics[metricName] == 0 && childMetrics[metricName] == 0 {
-				log.Warnf("Section metrics : Metric %v is not defined in any query and is not a child of any metric and will never be evaluated", metricName)
+				log.WithField("metric", metricName).Warn("Section metrics : Metric is not defined in any query and is not a child of any metric and will never be evaluated")
 			} else if queryMetrics[metricName] > 0 && childMetrics[metricName] > 0 {
-				log.Warnf("Section metrics : Metric %v is evaluated by %v query and at the same time is a child of %v metric, it may cause undefined behavior", metricName, queryMetrics[metricName], childMetrics[metricName])
+				log.WithFields(log.Fields{"metric": metricName, "query_metric_type": queryMetrics[metricName], "child_metric_type": childMetrics[metricName]}).Warn("Section metrics : Metric is evaluated by a query and at the same time is a child of a metric, it may cause undefined behavior")
 			} else if queryMetrics[metricName] > 1 {
-				log.Warnf("Section metrics : Metric %v is evaluated by %v queries at the same time, it may cause undefined behavior", metricName, queryMetrics[metricName])
+				log.WithFields(log.Fields{"metric": metricName, "query_metric_type": queryMetrics[metricName]}).Warn("Section metrics : Metric is evaluated by several queries at the same time, it may cause undefined behavior")
 			} else if childMetrics[metricName] > 1 {
-				log.Warnf("Section metrics : Metric %v is a child of %v metrics at the same time, it may cause undefined behavior", metricName, childMetrics[metricName])
+				log.WithFields(log.Fields{"metric": metricName, "child_metric_type": childMetrics[metricName]}).Warn("Section metrics : Metric is a child of several metrics at the same time, it may cause undefined behavior")
 			}
 		}
 
 		if !allowedMetricOperations[metricConfig.Operation] {
-			log.Warnf("Section metrics : Metric %v has unknown operation %v", metricName, metricConfig.Operation)
+			log.WithFields(log.Fields{"metric": metricName, "operation": metricConfig.Operation}).Warn("Section metrics : Metric has an unknown operation")
 		}
 		if !allowedMetricTypes[metricConfig.Type] {
-			log.Warnf("Section metrics : Metric %v has unknown type %v", metricName, metricConfig.Type)
+			log.WithFields(log.Fields{"metric": metricName, "metric_config_type": metricConfig.Type}).Warn("Section metrics : Metric has an unknown type")
 		}
 		if metricConfig.Description == "" {
-			log.Warnf("Section metrics : Metric %v has empty description", metricName)
+			log.WithField("metric", metricName).Warn("Section metrics : Metric has empty description")
 		}
 
 		if metricConfig.Type == "histogram" && len(metricConfig.Buckets) == 0 {
-			log.Warnf("Section metrics : Metric %v of histogram type doesn't have buckets configured", metricName)
+			log.WithField("metric", metricName).Warn("Section metrics : Metric of histogram type doesn't have buckets configured")
 		} else if metricConfig.Type != "histogram" && len(metricConfig.Buckets) > 0 {
-			log.Warnf("Section metrics : Metric %v of %v type has buckets configured", metricName, metricConfig.Type)
+			log.WithFields(log.Fields{"metric": metricName, "metric_config_type": metricConfig.Type}).Warn("Section metrics : Metric of a non-histogram type has buckets configured")
 		} else if metricConfig.Type == "histogram" && len(metricConfig.Buckets) > 0 {
 			buckets := make(map[float64]bool, len(metricConfig.Buckets))
 			for _, bucketValue := range metricConfig.Buckets {
 				if buckets[bucketValue] {
-					log.Warnf("Section metrics : Metric %v of histogram type has duplicate bucket configured (bucket value is %v)", metricName, bucketValue)
+					log.WithFields(log.Fields{"metric": metricName, "bucket_value": bucketValue}).Warn("Section metrics : Metric of histogram type has a duplicate bucket configured")
 				}
 				buckets[bucketValue] = true
 			}
@@ -276,27 +276,27 @@ func performMetricsNonBlockingChecks(config *Config) {
 
 		if len(metricConfig.MultiValueFields) > 0 {
 			if metricConfig.Operation != "count" {
-				log.Warnf("Section metrics : Metric %v of %v operation has multi-value fields configured, which is supported only for the count operation", metricName, metricConfig.Operation)
+				log.WithFields(log.Fields{"metric": metricName, "operation": metricConfig.Operation}).Warn("Section metrics : Metric has multi-value fields configured, which is supported only for the count operation")
 			}
 		}
 
 		if metricConfig.IdField != "" && metricConfig.Operation != "count" {
-			log.Warnf("Section metrics : Metric %v of %v operation has id-field configured, which is supported only for the count operation", metricName, metricConfig.Operation)
+			log.WithFields(log.Fields{"metric": metricName, "operation": metricConfig.Operation}).Warn("Section metrics : Metric has id-field configured, which is supported only for the count operation")
 		}
 
 		if metricConfig.MetricValue == "" && metricConfig.Operation == "value" {
-			log.Warnf("Section metrics : Metric %v of value operation doesn't have metric-value configured", metricName)
+			log.WithField("metric", metricName).Warn("Section metrics : Metric of value operation doesn't have metric-value configured")
 		} else if metricConfig.MetricValue != "" && metricConfig.Operation != "value" {
-			log.Warnf("Section metrics : Metric %v of %v operation has metric-value configured", metricName, metricConfig.Operation)
+			log.WithFields(log.Fields{"metric": metricName, "operation": metricConfig.Operation}).Warn("Section metrics : Metric of a non-value operation has metric-value configured")
 		}
 
 		if len(metricConfig.ChildMetrics) > 0 && metricConfig.Operation != "duration" {
-			log.Warnf("Section metrics : Metric %v of %v operation has child metrics configured, which is not supported", metricName, metricConfig.Operation)
+			log.WithFields(log.Fields{"metric": metricName, "operation": metricConfig.Operation}).Warn("Section metrics : Metric has child metrics configured, which is not supported for this operation")
 		}
 		if metricConfig.Operation == "count" {
 			for paramName := range metricConfig.Parameters {
 				if !countMetricsAllowedParams[paramName] {
-					log.Warnf("Section metrics : Metric %v has not supported parameter %v for count operation", metricName, paramName)
+					log.WithFields(log.Fields{"metric": metricName, "param_name": paramName}).Warn("Section metrics : Metric has an unsupported parameter for the count operation")
 				}
 			}
 		}
@@ -304,7 +304,7 @@ func performMetricsNonBlockingChecks(config *Config) {
 		if metricConfig.Operation == "value" {
 			for paramName := range metricConfig.Parameters {
 				if !valueMetricsAllowedParams[paramName] {
-					log.Warnf("Section metrics : Metric %v has not supported parameter %v for value operation", metricName, paramName)
+					log.WithFields(log.Fields{"metric": metricName, "param_name": paramName}).Warn("Section metrics : Metric has an unsupported parameter for the value operation")
 				}
 			}
 		}
@@ -313,16 +313,16 @@ func performMetricsNonBlockingChecks(config *Config) {
 			for _, childMetricName := range metricConfig.ChildMetrics {
 				childMetricConfig := config.Metrics[childMetricName]
 				if childMetricConfig == nil {
-					log.Warnf("Section metrics : Metric %v has undefined child metrics %v", metricName, childMetricName)
+					log.WithFields(log.Fields{"metric": metricName, "child_metric_name": childMetricName}).Warn("Section metrics : Metric has an undefined child metric")
 				} else if childMetricConfig.Operation != "duration-no-response" {
-					log.Warnf("Section metrics : Metric %v has child metrics %v with operation %v, which is not supported (Operation must be duration-no-response for the child metric)", metricName, childMetricName, childMetricConfig.Operation)
+					log.WithFields(log.Fields{"metric": metricName, "child_metric_name": childMetricName, "operation": childMetricConfig.Operation}).Warn("Section metrics : Metric has a child metric with an unsupported operation (Operation must be duration-no-response for the child metric)")
 				}
 			}
 			if len(metricConfig.ChildMetrics) > 0 {
 				childMetrics := make(map[string]bool)
 				for _, childMetric := range metricConfig.ChildMetrics {
 					if childMetrics[childMetric] {
-						log.Warnf("Section metrics : Metric %v has duplicate child metrics %v configured", metricName, childMetric)
+						log.WithFields(log.Fields{"metric": metricName, "child_metric": childMetric}).Warn("Section metrics : Metric has a duplicate child metric configured")
 					} else {
 						childMetrics[childMetric] = true
 					}
@@ -330,7 +330,7 @@ func performMetricsNonBlockingChecks(config *Config) {
 			}
 			for paramName := range metricConfig.Parameters {
 				if !durationMetricsAllowedParams[paramName] {
-					log.Warnf("Section metrics : Metric %v has not supported parameter %v for duration operation", metricName, paramName)
+					log.WithFields(log.Fields{"metric": metricName, "param_name": paramName}).Warn("Section metrics : Metric has an unsupported parameter for the duration operation")
 				}
 			}
 		}
@@ -338,21 +338,21 @@ func performMetricsNonBlockingChecks(config *Config) {
 		if metricConfig.Operation == "duration-no-response" {
 			for paramName := range metricConfig.Parameters {
 				if !durationNoRespMetricsAllowedParams[paramName] {
-					log.Warnf("Section metrics : Metric %v has not supported parameter %v for duration-no-response operation", metricName, paramName)
+					log.WithFields(log.Fields{"metric": metricName, "param_name": paramName}).Warn("Section metrics : Metric has an unsupported parameter for the duration-no-response operation")
 				}
 			}
 		}
 
 		if metricConfig.Parameters["init-value"] != "" && metricConfig.Type == "gauge" {
-			log.Warnf("Section metrics : Metric %v has not supported parameter init-value for gauge type", metricName)
+			log.WithField("metric", metricName).Warn("Section metrics : Metric has the unsupported parameter init-value for gauge type")
 		}
 
 		if metricConfig.Parameters["default-value"] != "" && metricConfig.Type != "gauge" {
-			log.Warnf("Section metrics : Metric %v has not supported parameter default-value for %v type", metricName, metricConfig.Type)
+			log.WithFields(log.Fields{"metric": metricName, "metric_config_type": metricConfig.Type}).Warn("Section metrics : Metric has the unsupported parameter default-value for a non-gauge type")
 		}
 
 		if metricConfig.Threads < 0 {
-			log.Warnf("Section metrics : Metric %v has negative value %v for threads number", metricName, metricConfig.Threads)
+			log.WithFields(log.Fields{"metric": metricName, "threads": metricConfig.Threads}).Warn("Section metrics : Metric has a negative value for threads number")
 		}
 
 		if len(metricConfig.ExpectedLabels) == 0 {
@@ -370,11 +370,11 @@ func performMetricsNonBlockingChecks(config *Config) {
 		labelsCount := len(totalLabels)
 		for itemNum, expectedLabelsItem := range metricConfig.ExpectedLabels {
 			if len(expectedLabelsItem) != labelsCount {
-				log.Warnf("Section metrics : Invalid expected labels configuration for metric %v, itemNum %v : Metric has %v labels defined while in expected labels item %v labels defined", metricName, itemNum, labelsCount, len(expectedLabelsItem))
+				log.WithFields(log.Fields{"metric": metricName, "item_num": itemNum, "labels_count": labelsCount, "expected_labels_item_count": len(expectedLabelsItem)}).Warn("Section metrics : Invalid expected labels configuration, the metric label count differs from the expected labels item count")
 			}
 			for _, labelName := range totalLabels {
 				if len(expectedLabelsItem[labelName]) == 0 {
-					log.Warnf("Section metrics : Invalid expected labels configuration for metric %v, itemNum %v : Metric has label %v defined while in expected labels this label is not defined", metricName, itemNum, labelName)
+					log.WithFields(log.Fields{"metric": metricName, "item_num": itemNum, "label_name": labelName}).Warn("Section metrics : Invalid expected labels configuration, the metric has a label that is not defined in expected labels")
 				}
 			}
 		}
@@ -387,115 +387,115 @@ func performQueriesNonBlockingChecks(config *Config) {
 	pushExport := getPushExport(config)
 	for queryName, queryConfig := range config.Queries {
 		if queryConfig == nil {
-			log.Warnf("Section queries : For query %v configuration is empty", queryName)
+			log.WithField("query", queryName).Warn("Section queries : Query configuration is empty")
 			queryConfig = &QueryConfig{}
 		}
 
 		metrics := make(map[string]bool, len(queryConfig.Metrics))
 		for _, metricName := range queryConfig.Metrics {
 			if config.Metrics[metricName] == nil {
-				log.Warnf("Section queries : For query %v metric %v is configured, but this metric is not defined in metrics section", queryName, metricName)
+				log.WithFields(log.Fields{"query": queryName, "metric": metricName}).Warn("Section queries : Metric is configured for the query, but this metric is not defined in the metrics section")
 			}
 			if metrics[metricName] {
-				log.Warnf("Section queries : For query %v metric %v is configured more than once", queryName, metricName)
+				log.WithFields(log.Fields{"query": queryName, "metric": metricName}).Warn("Section queries : Metric is configured more than once for the query")
 			} else {
 				metrics[metricName] = true
 			}
 		}
 
 		if len(queryConfig.QueryString) == 0 {
-			log.Warnf("Section queries : For query %v query_string is empty", queryName)
+			log.WithField("query", queryName).Warn("Section queries : query_string is empty")
 		}
 
 		if len(queryConfig.Timerange) == 0 {
-			log.Warnf("Section queries : For query %v timerange is empty", queryName)
+			log.WithField("query", queryName).Warn("Section queries : timerange is empty")
 		} else {
 			_, err := time.ParseDuration(queryConfig.Timerange)
 			if err != nil {
-				log.Warnf("Section queries : For query %v timerange %v can not be parsed as duration : %+v", queryName, queryConfig.Timerange, err)
+				log.WithFields(log.Fields{"query": queryName, "timerange": queryConfig.Timerange, "error": err}).Warn("Section queries : timerange can not be parsed as duration")
 			}
 		}
 
 		if len(queryConfig.FieldsInOrder) == 0 && !isNewRelic {
-			log.Warnf("Section queries : For query %v fields_in_order list is empty", queryName)
+			log.WithField("query", queryName).Warn("Section queries : fields_in_order list is empty")
 		}
 
 		if len(queryConfig.Croniter) == 0 {
-			log.Warnf("Section queries : For query %v croniter is empty", queryName)
+			log.WithField("query", queryName).Warn("Section queries : croniter is empty")
 		} else {
 			_, err := parser.Parse(queryConfig.Croniter)
 			if err != nil {
-				log.Warnf("Section queries : For query %v croniter %v is invalid : %+v", queryName, queryConfig.Croniter, err)
+				log.WithFields(log.Fields{"query": queryName, "croniter": queryConfig.Croniter, "error": err}).Warn("Section queries : croniter is invalid")
 			}
 		}
 
 		if len(queryConfig.Interval) == 0 {
-			log.Warnf("Section queries : For query %v interval is empty", queryName)
+			log.WithField("query", queryName).Warn("Section queries : interval is empty")
 		} else {
 			_, err := time.ParseDuration(queryConfig.Interval)
 			if err != nil {
-				log.Warnf("Section queries : For query %v interval %v can not be parsed as duration : %+v", queryName, queryConfig.Interval, err)
+				log.WithFields(log.Fields{"query": queryName, "interval": queryConfig.Interval, "error": err}).Warn("Section queries : interval can not be parsed as duration")
 			}
 		}
 
 		if len(queryConfig.QueryLag) == 0 {
-			log.Warnf("Section queries : For query %v query_lag is empty", queryName)
+			log.WithField("query", queryName).Warn("Section queries : query_lag is empty")
 		} else {
 			_, err := time.ParseDuration(queryConfig.QueryLag)
 			if err != nil {
-				log.Warnf("Section queries : For query %v query_lag %v can not be parsed as duration : %+v", queryName, queryConfig.QueryLag, err)
+				log.WithFields(log.Fields{"query": queryName, "query_lag": queryConfig.QueryLag, "error": err}).Warn("Section queries : query_lag can not be parsed as duration")
 			}
 		}
 
 		if queryConfig.GTSQueueSize != "" {
 			val, err := strconv.ParseInt(queryConfig.GTSQueueSize, 10, 64)
 			if err != nil {
-				log.Warnf("Section queries : For query %v gts-queue-size %v can not be parsed as int : %+v", queryName, queryConfig.GTSQueueSize, err)
+				log.WithFields(log.Fields{"query": queryName, "gts_queue_size": queryConfig.GTSQueueSize, "error": err}).Warn("Section queries : gts-queue-size can not be parsed as int")
 			} else if val < 0 {
-				log.Warnf("Section queries : For query %v gts-queue-size %v is negative", queryName, val)
+				log.WithFields(log.Fields{"query": queryName, "val": val}).Warn("Section queries : gts-queue-size is negative")
 			}
 		}
 
 		if queryConfig.GDQueueSize != "" {
 			val, err := strconv.ParseInt(queryConfig.GDQueueSize, 10, 64)
 			if err != nil {
-				log.Warnf("Section queries : For query %v gd-queue-size %v can not be parsed as int : %+v", queryName, queryConfig.GDQueueSize, err)
+				log.WithFields(log.Fields{"query": queryName, "gd_queue_size": queryConfig.GDQueueSize, "error": err}).Warn("Section queries : gd-queue-size can not be parsed as int")
 			} else if val < 0 {
-				log.Warnf("Section queries : For query %v gd-queue-size %v is negative", queryName, val)
+				log.WithFields(log.Fields{"query": queryName, "val": val}).Warn("Section queries : gd-queue-size is negative")
 			}
 		}
 
 		if queryConfig.GMQueueSize != "" {
 			val, err := strconv.ParseInt(queryConfig.GMQueueSize, 10, 64)
 			if err != nil {
-				log.Warnf("Section queries : For query %v gm-queue-size %v can not be parsed as int : %+v", queryName, queryConfig.GMQueueSize, err)
+				log.WithFields(log.Fields{"query": queryName, "gm_queue_size": queryConfig.GMQueueSize, "error": err}).Warn("Section queries : gm-queue-size can not be parsed as int")
 			} else if val < 0 {
-				log.Warnf("Section queries : For query %v gm-queue-size %v is negative", queryName, val)
+				log.WithFields(log.Fields{"query": queryName, "val": val}).Warn("Section queries : gm-queue-size is negative")
 			}
 		}
 
 		if queryConfig.MaxHistoryLookup != "" {
 			_, err := time.ParseDuration(queryConfig.MaxHistoryLookup)
 			if err != nil {
-				log.Warnf("Section queries : For query %v max-history-lookup %v can not be parsed as duration : %+v", queryName, queryConfig.QueryLag, err)
+				log.WithFields(log.Fields{"query": queryName, "query_lag": queryConfig.QueryLag, "error": err}).Warn("Section queries : max-history-lookup can not be parsed as duration")
 			}
 		}
 
 		if pushExport != nil && pushExport.LastTimestampHost != nil {
 			if pushExport.LastTimestampHost.Endpoint == "" && queryConfig.LastTimestampEndpoint == "" {
-				log.Warnf("Section queries : For query %v last-timestamp-endpoint must be set, because push exporter is configured with last-timestamp-host", queryName)
+				log.WithField("query", queryName).Warn("Section queries : last-timestamp-endpoint must be set, because the push exporter is configured with last-timestamp-host")
 			}
 			if pushExport.LastTimestampHost.JsonPath == "" && queryConfig.LastTimestampJsonPath == "" {
-				log.Warnf("Section queries : For query %v last-timestamp-json-path must be set, because push exporter is configured with last-timestamp-host", queryName)
+				log.WithField("query", queryName).Warn("Section queries : last-timestamp-json-path must be set, because the push exporter is configured with last-timestamp-host")
 			}
 		}
 
 		if pushExport == nil || pushExport.LastTimestampHost == nil {
 			if queryConfig.LastTimestampEndpoint != "" {
-				log.Warnf("Section queries : For query %v last-timestamp-endpoint is set, but push exporter with last-timestamp-host is not configured", queryName)
+				log.WithField("query", queryName).Warn("Section queries : last-timestamp-endpoint is set, but a push exporter with last-timestamp-host is not configured")
 			}
 			if queryConfig.LastTimestampJsonPath != "" {
-				log.Warnf("Section queries : For query %v last-timestamp-json-path is set, but push exporter with last-timestamp-host is not configured", queryName)
+				log.WithField("query", queryName).Warn("Section queries : last-timestamp-json-path is set, but a push exporter with last-timestamp-host is not configured")
 			}
 		}
 
@@ -507,43 +507,43 @@ func performQueriesNonBlockingChecks(config *Config) {
 		availableFields := make(map[string]bool)
 		for _, field := range queryConfig.FieldsInOrder {
 			if availableFields[field] {
-				log.Warnf("Section queries : For query %v fields_in_order list contains duplicate value %v", queryName, field)
+				log.WithFields(log.Fields{"query": queryName, "field": field}).Warn("Section queries : fields_in_order list contains a duplicate value")
 			}
 			availableFields[field] = true
 		}
 		for enrichIndex, enrichConfig := range queryConfig.Enrich {
 			if enrichConfig.SourceField == "" {
-				log.Warnf("Section queries : For query %v enrich %v sourceField is empty", queryName, enrichIndex)
+				log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex}).Warn("Section queries : enrich sourceField is empty")
 			} else if !availableFields[enrichConfig.SourceField] {
-				log.Warnf("Section queries : For query %v enrich %v sourceField %v is referring to not available sourceField", queryName, enrichIndex, enrichConfig.SourceField)
+				log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "source_field": enrichConfig.SourceField}).Warn("Section queries : enrich sourceField is referring to a sourceField that is not available")
 			} else {
 				usedFields[enrichConfig.SourceField] = true
 			}
 			if enrichConfig.Regexp != "" {
 				_, err := regexp.Compile(enrichConfig.Regexp)
 				if err != nil {
-					log.Warnf("Section queries : For query %v enrich %v regexp %v is compiling with errors : %+v", queryName, enrichIndex, enrichConfig.Regexp, err)
+					log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "regexp": enrichConfig.Regexp, "error": err}).Warn("Section queries : enrich regexp is compiling with errors")
 				}
 				for destFieldIndex, destField := range enrichConfig.DestFields {
 					if destField.Template == "" {
-						log.Warnf("Section queries : For query %v enrich %v destField %v template is empty, but regexp is specified for enrich", queryName, enrichIndex, destFieldIndex)
+						log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "dest_field_index": destFieldIndex}).Warn("Section queries : enrich destField template is empty, but regexp is specified for enrich")
 					}
 				}
 			} else {
 				for destFieldIndex, destField := range enrichConfig.DestFields {
 					if destField.Template != "" {
-						log.Warnf("Section queries : For query %v enrich %v destField %v template is set, but regexp is not specified for enrich", queryName, enrichIndex, destFieldIndex)
+						log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "dest_field_index": destFieldIndex}).Warn("Section queries : enrich destField template is set, but regexp is not specified for enrich")
 					}
 				}
 			}
 			for destFieldIndex, destField := range enrichConfig.DestFields {
 				availableFields[destField.FieldName] = true
 				if destField.URIProcessing.IdDigitQuantity < 0 {
-					log.Warnf("Section queries : For query %v enrich %v destField %v uri-processing.id-digit-quantity is %v which is less than 0", queryName, enrichIndex, destFieldIndex, destField.URIProcessing.IdDigitQuantity)
+					log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "dest_field_index": destFieldIndex, "id_digit_quantity": destField.URIProcessing.IdDigitQuantity}).Warn("Section queries : enrich destField uri-processing.id-digit-quantity is less than 0")
 				}
 			}
 			if enrichConfig.Threads < 0 {
-				log.Warnf("Section queries : For query %v enrich %v threads count %v is negative", queryName, enrichIndex, enrichConfig.Threads)
+				log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "threads": enrichConfig.Threads}).Warn("Section queries : enrich threads count is negative")
 			}
 		}
 		for _, metricName := range queryConfig.Metrics {
@@ -556,7 +556,7 @@ func performQueriesNonBlockingChecks(config *Config) {
 					fieldName := metricConfig.Parameters[paramName]
 					if fieldName != "" {
 						if !availableFields[fieldName] {
-							log.Warnf("Section queries : For query %v metric %v requests field with the name %v, but this field is not evaluated by the query", queryName, metricName, fieldName)
+							log.WithFields(log.Fields{"query": queryName, "metric": metricName, "field_name": fieldName}).Warn("Section queries : Metric requests a field that is not evaluated by the query")
 						}
 						usedFields[fieldName] = true
 					}
@@ -564,25 +564,25 @@ func performQueriesNonBlockingChecks(config *Config) {
 			}
 			if metricConfig.MetricValue != "" {
 				if !availableFields[metricConfig.MetricValue] {
-					log.Warnf("Section queries : For query %v metric %v requests field with the name %v, but this field is not evaluated by the query", queryName, metricName, metricConfig.MetricValue)
+					log.WithFields(log.Fields{"query": queryName, "metric": metricName, "metric_value": metricConfig.MetricValue}).Warn("Section queries : Metric requests a field that is not evaluated by the query")
 				}
 				usedFields[metricConfig.MetricValue] = true
 			}
 			for _, label := range metricConfig.LabelsInitial {
 				if !availableFields[label] {
-					log.Warnf("Section queries : For query %v metric %v requests field with the name %v, but this field is not evaluated by the query", queryName, metricName, label)
+					log.WithFields(log.Fields{"query": queryName, "metric": metricName, "label": label}).Warn("Section queries : Metric requests a field that is not evaluated by the query")
 				}
 				usedFields[label] = true
 			}
 			for _, field := range metricConfig.LabelFieldMap {
 				if !availableFields[field] {
-					log.Warnf("Section queries : For query %v metric %v requests field with the name %v, but this field is not evaluated by the query", queryName, metricName, field)
+					log.WithFields(log.Fields{"query": queryName, "metric": metricName, "field": field}).Warn("Section queries : Metric requests a field that is not evaluated by the query")
 				}
 				usedFields[field] = true
 			}
 			for _, mvfc := range metricConfig.MultiValueFields {
 				if !availableFields[mvfc.FieldName] {
-					log.Warnf("Section queries : For query %v metric %v requests field with the name %v, but this field is not evaluated by the query", queryName, metricName, mvfc.FieldName)
+					log.WithFields(log.Fields{"query": queryName, "metric": metricName, "field_name": mvfc.FieldName}).Warn("Section queries : Metric requests a field that is not evaluated by the query")
 				}
 				usedFields[mvfc.FieldName] = true
 			}
@@ -593,7 +593,7 @@ func performQueriesNonBlockingChecks(config *Config) {
 		if len(availableFields) > 1 {
 			for availableField := range availableFields {
 				if !usedFields[availableField] {
-					log.Warnf("Section queries : For query %v field %v is evaluated but is never used", queryName, availableField)
+					log.WithFields(log.Fields{"query": queryName, "available_field": availableField}).Warn("Section queries : Field is evaluated but is never used")
 				}
 			}
 		}
@@ -607,19 +607,19 @@ func performGeneralNonBlockingChecks(config *Config) {
 	if config.General.GMQueueSelfMonSize != "" {
 		_, err := strconv.ParseInt(config.General.GMQueueSelfMonSize, 10, 64)
 		if err != nil {
-			log.Warnf("Section general : Parameter gm-queue-self-mon-size %v can not be parsed as int : %+v", config.General.GMQueueSelfMonSize, err)
+			log.WithFields(log.Fields{"gm_queue_self_mon_size": config.General.GMQueueSelfMonSize, "error": err}).Warn("Section general : Parameter gm-queue-self-mon-size can not be parsed as int")
 		}
 	}
 	if config.General.LTSRetryCount != "" {
 		_, err := strconv.ParseInt(config.General.LTSRetryCount, 10, 64)
 		if err != nil {
-			log.Warnf("Section general : Parameter last-timestamp-retry-count %v can not be parsed as int : %+v", config.General.LTSRetryCount, err)
+			log.WithFields(log.Fields{"lts_retry_count": config.General.LTSRetryCount, "error": err}).Warn("Section general : Parameter last-timestamp-retry-count can not be parsed as int")
 		}
 	}
 	if config.General.LTSRetryPeriod != "" {
 		_, err := time.ParseDuration(config.General.LTSRetryPeriod)
 		if err != nil {
-			log.Warnf("Section general : Parameter last-timestamp-retry-period %v can not be parsed as duration : %+v", config.General.LTSRetryPeriod, err)
+			log.WithFields(log.Fields{"lts_retry_period": config.General.LTSRetryPeriod, "error": err}).Warn("Section general : Parameter last-timestamp-retry-period can not be parsed as duration")
 		}
 	}
 
@@ -681,6 +681,6 @@ func checkApiVersion(apiVersion string) error {
 	if version1 < currentAPIVersion {
 		return fmt.Errorf("section apiVersion : minimal supported config version is %v, config file has version %v, log-exporter can not start", currentAPIVersion, version1)
 	}
-	log.Infof("apiVersion check completed successfully, apiVersion is %v, minimal supported version is %v", version1, currentAPIVersion)
+	log.WithFields(log.Fields{"version1": version1, "current_api_version": currentAPIVersion}).Info("apiVersion check completed successfully")
 	return nil
 }

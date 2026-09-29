@@ -72,29 +72,29 @@ func (g *GraylogEmulator) graylogEmuHandlerFromFiles(w http.ResponseWriter, r *h
 	filename := graylogEmuCfg.SourceFiles[g.getNextIndex()]
 	file, err := os.Open(filename)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_1605).Errorf("GraylogEmulator : Error opening file : %+v", err)
+		log.WithField(ec.FIELD, ec.LME_1605).WithField("error", err).Error("GraylogEmulator : Error opening file")
 		return
 	}
 	defer func() {
 		if err = file.Close(); err != nil {
-			log.WithField(ec.FIELD, ec.LME_1605).Errorf("GraylogEmulator : Error closing file : %+v", err)
+			log.WithField(ec.FIELD, ec.LME_1605).WithField("error", err).Error("GraylogEmulator : Error closing file")
 		}
 	}()
 
 	b, err := io.ReadAll(file)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_1605).Errorf("GraylogEmulator : Error reading file : %+v", err)
+		log.WithField(ec.FIELD, ec.LME_1605).WithField("error", err).Error("GraylogEmulator : Error reading file")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	if _, err := w.Write(b); err != nil {
-		log.WithField(ec.FIELD, ec.LME_1605).Errorf("GraylogEmulator : Error writing response : %+v", err)
+		log.WithField(ec.FIELD, ec.LME_1605).WithField("error", err).Error("GraylogEmulator : Error writing response")
 	}
 }
 
 func (g *GraylogEmulator) graylogEmuHandlerFromConfig(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write([]byte(g.appConfig.GraylogEmulator.Data[g.getNextIndex()])); err != nil {
-		log.WithField(ec.FIELD, ec.LME_1605).Errorf("GraylogEmulator : Error writing response : %+v", err)
+		log.WithField(ec.FIELD, ec.LME_1605).WithField("error", err).Error("GraylogEmulator : Error writing response")
 	}
 }
 
@@ -103,6 +103,6 @@ func (g *GraylogEmulator) getNextIndex() int {
 	defer g.Unlock()
 	g.currentIndex++
 	g.currentIndex %= g.sourcesCount
-	log.Debugf("GraylogEmulator : currentIndex %v is generated", g.currentIndex)
+	log.WithField("current_index", g.currentIndex).Debug("GraylogEmulator : Current index is generated")
 	return g.currentIndex
 }

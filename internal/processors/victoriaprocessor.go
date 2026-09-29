@@ -62,26 +62,26 @@ func (vp *VictoriaProcessor) Start() {
 }
 
 func (vp *VictoriaProcessor) startGoroutine(queryName string) {
-	defer log.Infof("VictoriaProcessor : Goroutine for query %v is finished", queryName)
+	defer log.WithField("query", queryName).Info("VictoriaProcessor : Goroutine for the query is finished")
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("VictoriaProcessor : Panic during pushing for query %v : %+v ; Stacktrace of the panic : %v", queryName, rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"query": queryName, "panic": rec, "stacktrace": string(debug.Stack())}).Error("VictoriaProcessor : Panic during pushing for the query")
 			time.Sleep(time.Second * 5)
-			log.Infof("VictoriaProcessor : Starting gouroutine for query %v again ...", queryName)
+			log.WithField("query", queryName).Info("VictoriaProcessor : Starting goroutine for the query again ...")
 			go vp.startGoroutine(queryName)
 			vp.selfMonitorIncPanicRecoveries(queryName, 1.0, time.Now())
 		}
 	}()
-	log.Infof("VictoriaProcessor : Goroutine for query %v is started", queryName)
+	log.WithField("query", queryName).Info("VictoriaProcessor : Goroutine for the query is started")
 	victoriaService := vp.victoriaService
 	for {
 		mfs, ok := vp.gmQueue.Get(queryName)
 		if !ok {
-			log.WithField(ec.FIELD, ec.LME_1621).Errorf("VictoriaProcessor : Chan is closed for the query %v, stopping goroutine", queryName)
+			log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("VictoriaProcessor : Chan is closed for the query, stopping goroutine")
 			return
 		}
 		if len(mfs) == 0 {
-			log.Infof("VictoriaProcessor : No metric families received for the query %v", queryName)
+			log.WithField("query", queryName).Info("VictoriaProcessor : No metric families received for the query")
 			continue
 		}
 		vp.enrichWithCloudLabels(mfs)
@@ -89,10 +89,10 @@ func (vp *VictoriaProcessor) startGoroutine(queryName string) {
 		if victoriaService != nil && buffer != nil {
 			errc, err := victoriaService.PushBuffer(buffer, queryName)
 			for err != nil {
-				log.WithField(ec.FIELD, errc).Errorf("VictoriaProcessor : Error pushing metrics for query %v : %+v", queryName, err)
+				log.WithField(ec.FIELD, errc).WithFields(log.Fields{"query": queryName, "error": err}).Error("VictoriaProcessor : Error pushing metrics for the query")
 				if *vp.appConfig.General.PushRetry {
 					time.Sleep(vp.appConfig.General.PushRetryPeriodParsed)
-					log.Infof("VictoriaProcessor : Retry pushing metrics for query %v", queryName)
+					log.WithField("query", queryName).Info("VictoriaProcessor : Retry pushing metrics for the query")
 					errc, err = victoriaService.PushBuffer(buffer, queryName)
 				} else {
 					break
@@ -103,26 +103,26 @@ func (vp *VictoriaProcessor) startGoroutine(queryName string) {
 }
 
 func (vp *VictoriaProcessor) startGoroutineForSelfMetrics() {
-	defer log.Infof("VictoriaProcessor : Goroutine for %v is finished", utils.SELF_METRICS_REGISTRY_NAME)
+	defer log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("VictoriaProcessor : Goroutine for the registry is finished")
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("VictoriaProcessor : Panic during pushing for %v : %+v ; Stacktrace of the panic : %v", utils.SELF_METRICS_REGISTRY_NAME, rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"self_metrics_registry_name": utils.SELF_METRICS_REGISTRY_NAME, "panic": rec, "stacktrace": string(debug.Stack())}).Error("VictoriaProcessor : Panic during pushing for the registry")
 			time.Sleep(time.Second * 5)
-			log.Infof("VictoriaProcessor : Starting gouroutine for %v again ...", utils.SELF_METRICS_REGISTRY_NAME)
+			log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("VictoriaProcessor : Starting goroutine for the registry again ...")
 			go vp.startGoroutineForSelfMetrics()
 			vp.selfMonitorIncPanicRecoveries(utils.SELF_METRICS_REGISTRY_NAME, 1.0, time.Now())
 		}
 	}()
-	log.Infof("VictoriaProcessor : Goroutine for %v is started", utils.SELF_METRICS_REGISTRY_NAME)
+	log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("VictoriaProcessor : Goroutine for the registry is started")
 	victoriaService := vp.victoriaService
 	for {
 		mfs, ok := vp.gmQueue.Get(utils.SELF_METRICS_REGISTRY_NAME)
 		if !ok {
-			log.WithField(ec.FIELD, ec.LME_1621).Errorf("VictoriaProcessor : Chan is closed for %v, stopping goroutine", utils.SELF_METRICS_REGISTRY_NAME)
+			log.WithField(ec.FIELD, ec.LME_1621).WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Error("VictoriaProcessor : Chan is closed for the registry, stopping goroutine")
 			return
 		}
 		if len(mfs) == 0 {
-			log.Infof("VictoriaProcessor : No metric families received for %v", utils.SELF_METRICS_REGISTRY_NAME)
+			log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("VictoriaProcessor : No metric families received for the registry")
 			continue
 		}
 		vp.enrichWithCloudLabels(mfs)
@@ -130,10 +130,10 @@ func (vp *VictoriaProcessor) startGoroutineForSelfMetrics() {
 		if victoriaService != nil && buffer != nil {
 			errc, err := victoriaService.PushBuffer(buffer, utils.SELF_METRICS_REGISTRY_NAME)
 			for err != nil {
-				log.WithField(ec.FIELD, errc).Errorf("VictoriaProcessor : Error pushing metrics for %v : %+v", utils.SELF_METRICS_REGISTRY_NAME, err)
+				log.WithField(ec.FIELD, errc).WithFields(log.Fields{"self_metrics_registry_name": utils.SELF_METRICS_REGISTRY_NAME, "error": err}).Error("VictoriaProcessor : Error pushing metrics for the registry")
 				if *vp.appConfig.General.PushRetry {
 					time.Sleep(vp.appConfig.General.PushRetryPeriodParsed)
-					log.Infof("VictoriaProcessor : Retry pushing metrics for %v", utils.SELF_METRICS_REGISTRY_NAME)
+					log.WithField("self_metrics_registry_name", utils.SELF_METRICS_REGISTRY_NAME).Info("VictoriaProcessor : Retry pushing metrics for the registry")
 					errc, err = victoriaService.PushBuffer(buffer, utils.SELF_METRICS_REGISTRY_NAME)
 				} else {
 					break
@@ -148,9 +148,9 @@ func mfsToByteBuffer(mfs []*dto.MetricFamily) *bytes.Buffer {
 	for _, mf := range mfs {
 		written, err := expfmt.MetricFamilyToText(buffer, mf)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("VictoriaProcessor : Error during formatting metricFamily %v as text : %+v", *mf.Name, err)
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"mf_name": *mf.Name, "error": err}).Error("VictoriaProcessor : Error during formatting the metric family as text")
 		}
-		log.Debugf("VictoriaProcessor : Metric family %v processed to text : %v bytes total", *mf.Name, written)
+		log.WithFields(log.Fields{"mf_name": *mf.Name, "written": written}).Debug("VictoriaProcessor : Metric family processed to text")
 	}
 
 	return buffer

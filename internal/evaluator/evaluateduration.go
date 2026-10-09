@@ -28,13 +28,13 @@ import (
 )
 
 func (e *Evaluator) evaluateDurationMetric(data [][]string, metric string, metricCfg *config.MetricsConfig, query string) *MetricEvaluationResult {
-	log.Debugf("evaluateDurationMetric %v", metric)
+	log.WithField("metric", metric).Debug("evaluateDurationMetric")
 	seriesMap := make(map[string]*MetricSeries)
 	metricState := e.monState.Get(metric)
 	isHistogram := (metricCfg.Type == "histogram")
 
 	if metricState == nil {
-		log.Warnf("MetricState is empty for %v", metric)
+		log.WithField("metric", metric).Warn("MetricState is empty")
 		metricState = CreateMetricState()
 		e.monState.Set(metric, metricState)
 	}
@@ -46,7 +46,7 @@ func (e *Evaluator) evaluateDurationMetric(data [][]string, metric string, metri
 
 	intCalls, err := e.evaluateDurationIntCalls(data, metric, query)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_1020).Errorf("Error evaluating duration metric %v : %+v", metric, err)
+		log.WithField(ec.FIELD, ec.LME_1020).WithFields(log.Fields{"metric": metric, "error": err}).Error("Error evaluating duration metric")
 		return result
 	}
 
@@ -55,18 +55,18 @@ func (e *Evaluator) evaluateDurationMetric(data [][]string, metric string, metri
 		olv := intCall.OrderedLabelValues
 		reqTime := intCall.RequestTime
 		respTime := intCall.ResponseTime
-		log.Debugf("Processing correlationId %v, olv = %v, reqTime = %v, respTime = %v", correlationId, olv, reqTime, respTime)
+		log.WithFields(log.Fields{"correlation_id": correlationId, "olv": olv, "req_time": reqTime, "resp_time": respTime}).Debug("Processing int call")
 		if reqTime == 0 || respTime == 0 {
 			continue
 		}
 		duration := float64(respTime-reqTime) / 1000
 
 		if math.IsNaN(duration) {
-			log.Warnf("Got NaN duration for metric %v : skipping it", metric)
+			log.WithField("metric", metric).Warn("Got NaN duration, skipping it")
 			continue
 		}
 		if math.IsInf(duration, 0) {
-			log.Warnf("Got %v duration for metric %v : skipping it", duration, metric)
+			log.WithFields(log.Fields{"duration": duration, "metric": metric}).Warn("Got infinite duration, skipping it")
 			continue
 		}
 
@@ -85,17 +85,17 @@ func (e *Evaluator) evaluateDurationMetric(data [][]string, metric string, metri
 		}
 	}
 	if nans != 0 || infs != 0 {
-		log.Warnf("While evaluating duration metric %v some intCalls were skipped : %v nans, %v infs", metric, nans, infs)
+		log.WithFields(log.Fields{"metric": metric, "nans": nans, "infs": infs}).Warn("Some intCalls were skipped while evaluating the duration metric")
 	}
 
-	log.Debugf("seriesMap = %+v for metric %v", seriesMap, metric)
+	log.WithFields(log.Fields{"series_map": seriesMap, "metric": metric}).Debug("Evaluated the series map")
 
 	for olv, ms := range seriesMap {
 		labels := metricState.Get(olv)
 		if labels == nil {
 			labels = generateLabelValueMapFromOLV(olv, metricCfg.Labels)
 			metricState.Set(olv, labels)
-			log.Debugf("Generate new metricState values %v for metric %v", olv, metric)
+			log.WithFields(log.Fields{"olv": olv, "metric": metric}).Debug("Generate new metricState values")
 		}
 		ms.Labels = labels
 		ms.Average = ms.Sum / float64(ms.Count)
@@ -103,7 +103,7 @@ func (e *Evaluator) evaluateDurationMetric(data [][]string, metric string, metri
 	}
 
 	if metricCfg.HasDurationNoResponseChild {
-		log.Debugf("Metric %v has DurationNoResponseChild", metric)
+		log.WithField("metric", metric).Debug("Metric has DurationNoResponseChild")
 		result.ChildMetrics = make(map[string]*MetricEvaluationResult)
 		for _, childMetric := range metricCfg.ChildMetrics {
 			childMetricCfg := e.appConfig.Metrics[childMetric]
@@ -117,18 +117,18 @@ func (e *Evaluator) evaluateDurationMetric(data [][]string, metric string, metri
 }
 
 func (e *Evaluator) evaluateDurationNoResponseMetric(intCalls map[string]*IntCall, metric string, metricCfg *config.MetricsConfig) *MetricEvaluationResult {
-	log.Debugf("evaluateDurationNoResponseMetric %v", metric)
+	log.WithField("metric", metric).Debug("evaluateDurationNoResponseMetric")
 	metricState := e.monState.Get(metric)
 	var metricSeriesMap map[string]*MetricSeries
 
 	if log.IsLevelEnabled(log.DebugLevel) {
-		log.Debugf("Int calls for duration-no-response metric %v :", metric)
+		log.WithField("metric", metric).Debug("Int calls for the duration-no-response metric")
 		for correlationId, intCall := range intCalls {
-			log.Debugf("### correlationId %v, reqTime %v, respTime %v, olv %v", correlationId, intCall.RequestTime, intCall.ResponseTime, intCall.OrderedLabelValues)
+			log.WithFields(log.Fields{"correlation_id": correlationId, "request_time": intCall.RequestTime, "response_time": intCall.ResponseTime, "ordered_label_values": intCall.OrderedLabelValues}).Debug("### Int call")
 		}
 	}
 	if metricState == nil {
-		log.Warnf("MetricState is empty for %v", metric)
+		log.WithField("metric", metric).Warn("MetricState is empty")
 		metricState = CreateMetricState()
 		e.monState.Set(metric, metricState)
 	}
@@ -140,7 +140,7 @@ func (e *Evaluator) evaluateDurationNoResponseMetric(intCalls map[string]*IntCal
 
 	nrc := e.nrcRepo.GetCache(metric)
 	if nrc == nil {
-		log.WithField(ec.FIELD, ec.LME_1604).Errorf("Duration-no-response metric %v can not be evaluated, because no-response-cache is nil", metric)
+		log.WithField(ec.FIELD, ec.LME_1604).WithField("metric", metric).Error("Duration-no-response metric can not be evaluated, because no-response-cache is nil")
 		return nil
 	}
 
@@ -162,16 +162,16 @@ func (e *Evaluator) evaluateDurationNoResponseMetric(intCalls map[string]*IntCal
 		if labels == nil {
 			labels = generateLabelValueMapFromOLV(olv, metricCfg.Labels)
 			metricState.Set(olv, labels)
-			log.Debugf("Generate new metricState values %v for metric %v", olv, metric)
+			log.WithFields(log.Fields{"olv": olv, "metric": metric}).Debug("Generate new metricState values")
 		}
 		ms.Labels = labels
 		result.Series = append(result.Series, *ms)
 	}
 
 	if log.IsLevelEnabled(log.DebugLevel) {
-		log.Debugf("Put new batch to no-response-cache for metric %v :", metric)
+		log.WithField("metric", metric).Debug("Put new batch to no-response-cache")
 		for correlationId, cachedRequest := range nrCacheBatch.cache {
-			log.Debugf("### correlationId %v, time %v, olv %v, hasResponse %v", correlationId, cachedRequest.Time, *cachedRequest.Olv, cachedRequest.HasResponse)
+			log.WithFields(log.Fields{"correlation_id": correlationId, "time": cachedRequest.Time, "olv": *cachedRequest.Olv, "has_response": cachedRequest.HasResponse}).Debug("### Cached request")
 		}
 	}
 
@@ -181,13 +181,13 @@ func (e *Evaluator) evaluateDurationNoResponseMetric(intCalls map[string]*IntCal
 }
 
 func (e *Evaluator) evaluateDurationIntCalls(data [][]string, metric string, query string) (intCalls map[string]*IntCall, err error) {
-	log.Debugf("evaluateDurationIntCalls %v", metric)
+	log.WithField("metric", metric).Debug("evaluateDurationIntCalls")
 	metricCfg := e.appConfig.Metrics[metric]
 	intCalls = make(map[string]*IntCall)
 
 	dataSize := len(data)
 	if dataSize == 0 {
-		log.Debugf("DataSize == 0 for metric %v", metric)
+		log.WithField("metric", metric).Debug("DataSize == 0")
 		return intCalls, nil
 	}
 
@@ -233,7 +233,7 @@ func (e *Evaluator) evaluateDurationIntCalls(data [][]string, metric string, que
 	if err != nil {
 		return intCalls, fmt.Errorf("can not evaluate duration metric %v : %+v", metric, err)
 	}
-	log.Debugf("For metric %v got labelIndexes = %+v; heading = %v", metric, labelIndexes, heading)
+	log.WithFields(log.Fields{"metric": metric, "label_indexes": labelIndexes, "heading": heading}).Debug("Evaluated the label indexes")
 
 	for i := 1; i < dataSize; i++ {
 		var unixTime int64
@@ -241,17 +241,17 @@ func (e *Evaluator) evaluateDurationIntCalls(data [][]string, metric string, que
 		if timeFormat == "" {
 			unixTime, err = strconv.ParseInt(data[i][timeIndex], 10, 64)
 			if err != nil {
-				log.Debugf("For metric %v : Error parsing value %v : %+v", metric, data[i][timeIndex], err)
+				log.WithFields(log.Fields{"metric": metric, "time_field_value": data[i][timeIndex], "error": err}).Debug("Error parsing the time value")
 				continue
 			}
 		} else {
 			timestamp, err := time.Parse(timeFormat, data[i][timeIndex])
 			if err != nil {
-				log.Debugf("For metric %v : Error parsing value %v with format %v: %+v", metric, data[i][timeIndex], timeFormat, err)
+				log.WithFields(log.Fields{"metric": metric, "time_field_value": data[i][timeIndex], "time_format": timeFormat, "error": err}).Debug("Error parsing the time value with the configured format")
 				continue
 			} else {
 				unixTime = timestamp.UnixNano() / 1000000
-				log.Tracef("For metric %v : Value %v parsed successfully to %v with format %v", metric, data[i][timeIndex], unixTime, timeFormat)
+				log.WithFields(log.Fields{"metric": metric, "time_field_value": data[i][timeIndex], "unix_time": unixTime, "time_format": timeFormat}).Trace("Value parsed successfully")
 			}
 		}
 		messageType := data[i][messageTypeIndex]
@@ -273,7 +273,7 @@ func (e *Evaluator) evaluateDurationIntCalls(data [][]string, metric string, que
 				intCalls[correlationId].OrderedLabelValues = olv
 			}
 		default:
-			log.WithField(ec.FIELD, ec.LME_1020).Errorf("Wrong messageType %v for metric %v", messageType, metric)
+			log.WithField(ec.FIELD, ec.LME_1020).WithFields(log.Fields{"message_type": messageType, "metric": metric}).Error("Wrong messageType")
 		}
 	}
 
@@ -284,33 +284,33 @@ func (e *Evaluator) evaluateDurationIntCalls(data [][]string, metric string, que
 		olv := intCall.OrderedLabelValues
 		reqTime := intCall.RequestTime
 		respTime := intCall.ResponseTime
-		log.Debugf("Processing correlationId %v, olv = %v, reqTime = %v, respTime = %v", correlationId, olv, reqTime, respTime)
+		log.WithFields(log.Fields{"correlation_id": correlationId, "olv": olv, "req_time": reqTime, "resp_time": respTime}).Debug("Processing int call")
 		if reqTime == 0 {
 			if cache == nil {
-				log.Debugf("RequestTime is not set for %v. Skipping", correlationId)
+				log.WithField("correlation_id", correlationId).Debug("RequestTime is not set. Skipping")
 				continue
 			} else {
-				log.Tracef("RequestTime is not set for %v. Trying to find it in cache", correlationId)
+				log.WithField("correlation_id", correlationId).Trace("RequestTime is not set. Trying to find it in cache")
 				reqTime = cache.SearchRequestTimeInCache(correlationId)
 				if reqTime == 0 {
-					log.Debugf("RequestTime is not set in cache for %v. Skipping", correlationId)
+					log.WithField("correlation_id", correlationId).Debug("RequestTime is not set in cache. Skipping")
 					continue
 				} else {
-					log.Tracef("RequestTime %v is found for %v in cache", reqTime, correlationId)
+					log.WithFields(log.Fields{"req_time": reqTime, "correlation_id": correlationId}).Trace("RequestTime is found in cache")
 					intCall.RequestTime = reqTime
 				}
 			}
 		}
 		if respTime == 0 {
 			if isCacheUpdate && cache != nil {
-				log.Debugf("RequestTime %v put to cache for %v", reqTime, correlationId)
+				log.WithFields(log.Fields{"req_time": reqTime, "correlation_id": correlationId}).Debug("RequestTime put to cache")
 				newBatchToCache[correlationId] = reqTime
 			}
 		}
 	}
 
 	if isCacheUpdate && cache != nil {
-		log.Debugf("Updating cache %v for query %v from metric %v", cacheName, query, metric)
+		log.WithFields(log.Fields{"cache_name": cacheName, "query": query, "metric": metric}).Debug("Updating cache")
 		cache.PutBatchToCache(newBatchToCache)
 		selfMonitorUpdateCacheSize(query, cacheName, float64(cache.Size()))
 	}

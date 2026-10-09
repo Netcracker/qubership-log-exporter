@@ -89,15 +89,15 @@ func (c *MetricIdFieldCache) IncAge() {
 	c.age++
 
 	if c.age >= c.maxTTL {
-		log.Infof("For metric %v cache shift is started : len(c.cacheOld) = %v, len(c.cache) = %v, len(c.olvCacheOld) = %v, len(c.olvCache) = %v", c.metricName, len(c.cacheOld), len(c.cache), len(c.olvCacheOld), len(c.olvCache))
-		log.Tracef("For metric %v cache before shift : c.cacheOld = %+v, c.cache = %+v, c.olvCacheOld = %+v, c.olvCache = %+v", c.metricName, c.cacheOld, c.cache, c.olvCacheOld, c.olvCache)
+		log.WithFields(log.Fields{"metric": c.metricName, "cache_old_len": len(c.cacheOld), "cache_len": len(c.cache), "olv_cache_old_len": len(c.olvCacheOld), "olv_cache_len": len(c.olvCache)}).Info("Cache shift started")
+		log.WithFields(log.Fields{"metric": c.metricName, "cache_old": c.cacheOld, "cache": c.cache, "olv_cache_old": c.olvCacheOld, "olv_cache": c.olvCache}).Trace("Cache contents before the shift")
 		c.age = 0
 		c.cacheOld = c.cache
 		c.olvCacheOld = c.olvCache
 		c.cache = make(map[string]bool)
 		c.olvCache = make(map[string]map[string]bool)
-		log.Infof("For metric %v cache shift is finished : len(c.cacheOld) = %v, len(c.cache) = %v, len(c.olvCacheOld) = %v, len(c.olvCache) = %v", c.metricName, len(c.cacheOld), len(c.cache), len(c.olvCacheOld), len(c.olvCache))
-		log.Tracef("For metric %v cache after shift : c.cacheOld = %+v, c.cache = %+v, c.olvCacheOld = %+v, c.olvCache = %+v", c.metricName, c.cacheOld, c.cache, c.olvCacheOld, c.olvCache)
+		log.WithFields(log.Fields{"metric": c.metricName, "cache_old_len": len(c.cacheOld), "cache_len": len(c.cache), "olv_cache_old_len": len(c.olvCacheOld), "olv_cache_len": len(c.olvCache)}).Info("Cache shift finished")
+		log.WithFields(log.Fields{"metric": c.metricName, "cache_old": c.cacheOld, "cache": c.cache, "olv_cache_old": c.olvCacheOld, "olv_cache": c.olvCache}).Trace("Cache contents after the shift")
 	}
 }
 

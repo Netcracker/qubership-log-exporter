@@ -53,7 +53,7 @@ func (p *PushProcessor) enrichWithCloudLabels(mfs []*dto.MetricFamily) {
 		pushCloudLabelsList = append(pushCloudLabelsList, &lp)
 	}
 
-	log.Debugf("Cloud labels were found : %v : %v ; %v : %v ; %v : %v; pushCloudLabels : %+v", namespace, namespaceValue, pod, podValue, container, containerValue, pushCloudLabels)
+	log.WithFields(log.Fields{namespace: namespaceValue, pod: podValue, container: containerValue, "push_cloud_labels": pushCloudLabels}).Debug("Cloud labels were found")
 	for _, mf := range mfs {
 		for _, metric := range mf.Metric {
 			metric.Label = append(metric.Label, &labelNamespace, &labelPod, &labelContainer)

@@ -8,8 +8,8 @@ require (
 	github.com/hashicorp/consul/api v1.34.5
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.3
-	github.com/prometheus/common v0.71.0
-	github.com/prometheus/prometheus v0.314.0
+	github.com/prometheus/common v0.72.0
+	github.com/prometheus/prometheus v0.315.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.10.2
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -41,6 +41,6 @@ require (
 	github.com/prometheus/procfs v0.21.1 // indirect
 	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )

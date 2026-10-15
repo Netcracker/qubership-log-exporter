@@ -57,7 +57,7 @@ func Copy(src interface{}) interface{} {
 
 func recursiveCopy(original, cpy reflect.Value) {
 	switch original.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		originalValue := original.Elem()
 		if !originalValue.IsValid() {
 			return

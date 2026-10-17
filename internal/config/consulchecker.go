@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	capi "github.com/hashicorp/consul/api"
+	capi "github.com/hashicorp/consul/api/v2"
 	log "github.com/sirupsen/logrus"
 )
 

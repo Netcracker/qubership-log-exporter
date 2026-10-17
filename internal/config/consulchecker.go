@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	capi "github.com/hashicorp/consul/api"
+	capi "github.com/hashicorp/consul/api/v2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -86,7 +86,7 @@ func StartConsulChecker() {
 			} else if pair == nil {
 				log.WithField(ec.FIELD, ec.LME_7151).Errorf("ConsulChecker : Nil pair received from consul for log-level")
 			} else {
-				log.Debugf("ConsulChecker : The Key and value recieved from Consul: %v %v", pair.Key, string(pair.Value))
+				log.Debugf("ConsulChecker : The Key and value received from Consul: %v %v", pair.Key, string(pair.Value))
 				newLevel := string(pair.Value)
 
 				if newLevel != currentLevel {

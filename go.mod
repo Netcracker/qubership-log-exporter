@@ -5,7 +5,6 @@ go 1.26.7
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/golang/snappy v1.0.0
-	github.com/hashicorp/consul/api v1.34.4
 	github.com/hashicorp/consul/api/v2 v2.0.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/client_model v0.6.3

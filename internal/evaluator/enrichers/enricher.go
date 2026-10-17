@@ -55,7 +55,7 @@ func createEnricher(enrichConfig *config.EnrichConfig) *Enricher {
 		u := destFieldConfig.URIProcessing
 		enricher.uriReplaceEnrich = append(enricher.uriReplaceEnrich, u.IDReplacer != "" || u.UUIDReplacer != "" || u.NumberReplacer != "" || u.FSMReplacer != "")
 	}
-	log.Debugf("Enricher created : jsonEnrich = %v, regexpEnrich = %v, uriReplaceEnrich = %v", enricher.jsonEnrich, enricher.regexpEnrich, enricher.uriReplaceEnrich)
+	log.WithFields(log.Fields{"json_enrich": enricher.jsonEnrich, "regexp_enrich": enricher.regexpEnrich, "uri_replace_enrich": enricher.uriReplaceEnrich}).Debug("Enricher created")
 
 	return &enricher
 }
@@ -64,7 +64,7 @@ func Enrich(queryName string, graylogData *queues.GraylogData, queryConfig *conf
 	log.Debug("enrichers.Enrich is called")
 
 	if len(graylogData.Data) == 0 {
-		log.Debugf("Nothing to enrich for query %v : No data", queryName)
+		log.WithField("query", queryName).Debug("Nothing to enrich for the query : no data")
 		now := time.Now()
 		for enrichIndex := range queryConfig.Enrich {
 			selfMonitorObserveZeroEnrichEvaluationLatency(now, queryName, enrichIndex)
@@ -84,11 +84,11 @@ func (e *Enricher) addColumn(queryName string, graylogData *queues.GraylogData, 
 		selfMonitorObserveEnrichEvaluationLatency(enrichEvaluationStartTime, queryName, enrichIndex)
 	}()
 
-	log.Debugf("Start processing enrich for query %v, enrich_index %v and source-field %v", queryName, enrichIndex, enrichConfig.SourceField)
+	log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "source_field": enrichConfig.SourceField}).Debug("Start processing enrich")
 
 	pattern := enrichConfig.RegexpCompiled
 	if e.regexpEnrich && pattern == nil {
-		log.WithField(ec.FIELD, ec.LME_1010).Errorf("Failed to add columns for query %v, enrich_index %v and source-field %v : for enricher pattern is not compiled", queryName, enrichIndex, enrichConfig.SourceField)
+		log.WithField(ec.FIELD, ec.LME_1010).WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "source_field": enrichConfig.SourceField}).Error("Failed to add columns : the enricher pattern is not compiled")
 		return
 	}
 	data := graylogData.Data
@@ -96,7 +96,7 @@ func (e *Enricher) addColumn(queryName string, graylogData *queues.GraylogData, 
 
 	sourceFieldIndex := utils.FindStringIndexInArray(heading, enrichConfig.SourceField)
 	if sourceFieldIndex == -1 {
-		log.WithField(ec.FIELD, ec.LME_1010).Errorf("Failed to add columns for query %v, enrich_index %v and source-field %v : Source-field is not found", queryName, enrichIndex, enrichConfig.SourceField)
+		log.WithField(ec.FIELD, ec.LME_1010).WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "source_field": enrichConfig.SourceField}).Error("Failed to add columns : the source-field is not found")
 		return
 	}
 
@@ -113,19 +113,19 @@ func (e *Enricher) addColumn(queryName string, graylogData *queues.GraylogData, 
 		threadsNumber = dataSize - 1
 	}
 	if threadsNumber <= 1 {
-		log.Debugf("Enrich for query %v, enrich_index %v and source-field %v will be executed in the single-thread mode", queryName, enrichIndex, enrichConfig.SourceField)
+		log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "source_field": enrichConfig.SourceField}).Debug("Enrich will be executed in the single-thread mode")
 		e.addColumnTask(queryName, graylogData, enrichConfig, enrichIndex, pattern, sourceFieldIndex, 1, dataSize)
 		return
 	}
 
-	log.Debugf("Enrich for query %v, enrich_index %v and source-field %v will be executed in the multi-thread mode (threads number is %v)", queryName, enrichIndex, enrichConfig.SourceField, threadsNumber)
+	log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "source_field": enrichConfig.SourceField, "threads_number": threadsNumber}).Debug("Enrich will be executed in the multi-thread mode")
 	var wg sync.WaitGroup
 	wg.Add(threadsNumber)
 	for i := 0; i < threadsNumber; i++ {
 		i := i
 		start := 1 + i*(dataSize-1)/threadsNumber
 		end := 1 + (i+1)*(dataSize-1)/threadsNumber
-		log.Debugf("Enrich for query %v, enrich_index %v and source-field %v : thread %v , start = %v, end = %v, dataSize = %v", queryName, enrichIndex, enrichConfig.SourceField, i, start, end, dataSize)
+		log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "source_field": enrichConfig.SourceField, "i": i, "start": start, "end": end, "data_size": dataSize}).Debug("Enrich thread range")
 		go func() {
 			defer wg.Done()
 			e.addColumnTask(queryName, graylogData, enrichConfig, enrichIndex, pattern, sourceFieldIndex, start, end)
@@ -143,7 +143,7 @@ func (e *Enricher) addColumnTask(queryName string, graylogData *queues.GraylogDa
 }
 
 func (e *Enricher) addColumnTaskWithRegexp(queryName string, graylogData *queues.GraylogData, enrichConfig config.EnrichConfig, enrichIndex int, pattern *regexp.Regexp, sourceFieldIndex int, start int, end int) {
-	log.Debugf("addColumnTaskWithRegexp is called for query %v, enrichIndex %v, start %v, end %v", queryName, enrichIndex, start, end)
+	log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "start": start, "end": end}).Debug("addColumnTaskWithRegexp is called")
 	var matched, notMatched = 0, 0
 	now := time.Now()
 	data := graylogData.Data
@@ -157,14 +157,14 @@ func (e *Enricher) addColumnTaskWithRegexp(queryName string, graylogData *queues
 			contentString, err := processJson(data[i][sourceFieldIndex], enrichConfig.JsonPath)
 			if err != nil && jsonErrorCountDown > 0 {
 				jsonErrorCountDown--
-				log.WithField(ec.FIELD, ec.LME_1011).Errorf("Error applying jsonpath %v to jsonData %v : %+v", enrichConfig.JsonPath, data[i][sourceFieldIndex], err)
+				log.WithField(ec.FIELD, ec.LME_1011).WithFields(log.Fields{"json_path": enrichConfig.JsonPath, "source_field_value": data[i][sourceFieldIndex], "error": err}).Error("Error applying the jsonpath to the JSON data")
 			}
 			content = []byte(contentString)
 		} else {
 			content = []byte(data[i][sourceFieldIndex])
 		}
 		submatches := pattern.FindSubmatchIndex(content)
-		//log.Debugf("### Submatches : %+v, pattern : %+v, content = %+v", submatches, pattern, string(content))
+		//log.WithFields(log.Fields{"submatches": submatches, "pattern": pattern, "content": string(content)}).Debug("### Submatches")
 		for destFieldIndex, destFieldConfig := range enrichConfig.DestFields {
 			var destFieldValueStr string
 			if len(submatches) == 0 {
@@ -192,7 +192,7 @@ func (e *Enricher) addColumnTaskWithRegexp(queryName string, graylogData *queues
 }
 
 func (e *Enricher) addColumnTaskWithoutRegexp(queryName string, graylogData *queues.GraylogData, enrichConfig config.EnrichConfig, enrichIndex int, sourceFieldIndex int, start int, end int) {
-	log.Debugf("addColumnTaskWithoutRegexp is called for query %v, enrichIndex %v, start %v, end %v", queryName, enrichIndex, start, end)
+	log.WithFields(log.Fields{"query": queryName, "enrich_index": enrichIndex, "start": start, "end": end}).Debug("addColumnTaskWithoutRegexp is called")
 
 	jsonErrorCountDown := 5
 	data := graylogData.Data
@@ -203,7 +203,7 @@ func (e *Enricher) addColumnTaskWithoutRegexp(queryName string, graylogData *que
 			content, err = processJson(data[i][sourceFieldIndex], enrichConfig.JsonPath)
 			if err != nil && jsonErrorCountDown > 0 {
 				jsonErrorCountDown--
-				log.WithField(ec.FIELD, ec.LME_1011).Errorf("Error applying jsonpath %v to jsonData %v : %+v", enrichConfig.JsonPath, data[i][sourceFieldIndex], err)
+				log.WithField(ec.FIELD, ec.LME_1011).WithFields(log.Fields{"json_path": enrichConfig.JsonPath, "source_field_value": data[i][sourceFieldIndex], "error": err}).Error("Error applying the jsonpath to the JSON data")
 			}
 		} else {
 			content = data[i][sourceFieldIndex]
@@ -247,10 +247,10 @@ func processJson(data string, jsonPath string) (string, error) {
 func logLimited(data [][]string, message string) {
 	const LIMIT = 2
 
-	log.Debugf("%v", message)
+	log.WithField("message", message).Debug("Graylog data dump")
 	end1 := min(LIMIT, len(data))
 	for i := 0; i < end1; i++ {
-		log.Debugf("%v : %+v", i, data[i])
+		log.WithFields(log.Fields{"i": i, "row": data[i]}).Debug("Graylog data row")
 	}
 
 	start2 := max(end1, len(data)-LIMIT)
@@ -259,7 +259,7 @@ func logLimited(data [][]string, message string) {
 	}
 
 	for i := start2; i < len(data); i++ {
-		log.Debugf("%v : %+v", i, data[i])
+		log.WithFields(log.Fields{"i": i, "row": data[i]}).Debug("Graylog data row")
 	}
 }
 

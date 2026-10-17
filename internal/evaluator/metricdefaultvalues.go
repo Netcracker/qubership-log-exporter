@@ -33,9 +33,9 @@ func CreateMetricDefaultValues(metricName string, defaultValue string) *MetricDe
 	val, err := strconv.ParseFloat(defaultValue, 64)
 	if err != nil {
 		if defaultValue == "" {
-			log.Debugf("Empty defaultValue received for metric %v; defaultValue is set to NaN", metricName)
+			log.WithField("metric", metricName).Debug("Empty defaultValue received, defaultValue is set to NaN")
 		} else {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing defaultValue %v for metric %v : %+v; defaultValue is set to NaN", defaultValue, metricName, err)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"default_value": defaultValue, "metric": metricName, "error": err}).Error("Cannot parse defaultValue, defaultValue is set to NaN")
 		}
 		mdv.DefaultValue = math.NaN()
 	} else {
@@ -55,17 +55,17 @@ func CreateMetricDefaultValuesRepository(metricsMap map[string]*config.MetricsCo
 
 	for metricName, metricCfg := range metricsMap {
 		if len(metricCfg.Parameters) == 0 {
-			log.Debugf("DefaultValues : No parameters found for metric %v", metricName)
+			log.WithField("metric", metricName).Debug("DefaultValues : No parameters found for the metric")
 			continue
 		}
 		defaultValue := metricCfg.Parameters["default-value"]
 		if defaultValue == "" {
-			log.Debugf("DefaultValues : No default values found for metric %v", metricName)
+			log.WithField("metric", metricName).Debug("DefaultValues : No default values found for the metric")
 			continue
 		}
 		mdv := CreateMetricDefaultValues(metricName, defaultValue)
 		repo.m[metricName] = mdv
-		log.Infof("Default values successfully created for metric %v : %+v", metricName, mdv)
+		log.WithFields(log.Fields{"metric": metricName, "default_values": mdv}).Info("Default values created")
 	}
 
 	return &repo
@@ -73,7 +73,7 @@ func CreateMetricDefaultValuesRepository(metricsMap map[string]*config.MetricsCo
 
 func (repo *MetricDefaultValuesRepository) GetMetricDefaultValue(metric string) float64 {
 	if repo.m[metric] == nil {
-		log.Tracef("For metric %v DefaultValue is NaN", metric)
+		log.WithField("metric", metric).Trace("DefaultValue is NaN")
 		return math.NaN()
 	}
 

@@ -59,31 +59,31 @@ var (
 
 func initExports() {
 	for exportName, exportConfig := range appConfig.Exports {
-		log.Infof("ExportConfig = %+v", exportConfig.GetSafeCopy())
+		log.WithField("export_config", exportConfig.GetSafeCopy()).Info("Export config read")
 		switch exportConfig.Strategy {
 		case "push":
 			switch exportConfig.Consumer {
 			case "", "victoria-vmagent":
-				log.Infof("Initializing victoria pusher %v :", exportName)
+				log.WithField("export", exportName).Info("Initializing the victoria pusher")
 				victoriaService = httpservice.NewVictoriaService(exportConfig)
 			case "prometheus-remote-write":
-				log.Infof("Initializing promRW pusher %v :", exportName)
+				log.WithField("export", exportName).Info("Initializing the promRW pusher")
 				promRWService = httpservice.NewPromWRService(exportConfig)
 			}
 			if exportConfig.LastTimestampHost != nil {
-				log.Infof("Initializing lastTimestamp service %v :", exportName)
+				log.WithField("export", exportName).Info("Initializing the lastTimestamp service")
 				lastTimestampService = httpservice.NewLastTimestampService(exportConfig.LastTimestampHost)
 			}
 		case "pull":
 			var err error
 			pullPort, err = strconv.ParseInt(exportConfig.Port, 10, 64)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Can not parse port %v for puller %v. Pull mode won't work.", exportConfig.Port, exportName)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"port": exportConfig.Port, "export": exportName}).Error("Cannot parse the port for the puller. Pull mode won't work.")
 			} else {
-				log.Infof("Puller %v will expose metrics on port %v in pull mode", exportName, pullPort)
+				log.WithFields(log.Fields{"export": exportName, "pull_port": pullPort}).Info("The puller exposes metrics in pull mode")
 			}
 		default:
-			log.WithField(ec.FIELD, ec.LME_8102).Errorf("Unknown strategy %v. Export config %v is ignored", exportConfig.Strategy, exportName)
+			log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"strategy": exportConfig.Strategy, "export": exportName}).Error("Unknown strategy, the export config is ignored")
 		}
 	}
 }
@@ -103,25 +103,22 @@ func main() {
 
 	defer func() {
 		stopCroniter()
-		log.Info("LOG-EXPORTER STOPPED, no signal received")
-		fmt.Printf("\nstop log-exporter, %v\n", versionString())
+		log.WithField("version_string", versionString()).Info("LOG-EXPORTER STOPPED, no signal received")
 	}()
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.WithField(ec.FIELD, ec.LME_1601).Errorf("Panic in main : %+v ; Stacktrace of the panic : %v", rec, string(debug.Stack()))
+			log.WithField(ec.FIELD, ec.LME_1601).WithFields(log.Fields{"panic": rec, "stacktrace": string(debug.Stack())}).Error("Panic in main")
 		}
 	}()
 
-	fmt.Printf("start log-exporter, %v\n", versionString())
-
 	logger.ConfigureLog()
 
-	log.Infof("LOG-EXPORTER STARTED; %v", versionString())
+	log.WithField("version_string", versionString()).Info("LOG-EXPORTER STARTED")
 
 	var err error
 	appConfig, err = config.Read(*configPath)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_8101).Fatalf("Fatal: %v", err)
+		log.WithField(ec.FIELD, ec.LME_8101).WithField("error", err).Fatal("Cannot read the configuration")
 		return
 	}
 	reapplyFlags()
@@ -184,13 +181,13 @@ func checkConfigAndExit() {
 	log.Info("Log-exporter started with option -check-config.")
 	appConfig, err := config.SimpleSilentRead(*configPath)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_8101).Errorf("Error reading yaml config : %+v", err)
+		log.WithField(ec.FIELD, ec.LME_8101).WithField("error", err).Error("Cannot read the yaml config")
 		log.WithField(ec.FIELD, ec.LME_8100).Error("Yaml config is invalid")
 		return
 	}
 	err = config.ValidateConfig(appConfig)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_8101).Errorf("%+v", err)
+		log.WithField(ec.FIELD, ec.LME_8101).WithField("error", err).Error("The configuration is invalid")
 		return
 	}
 	log.Info("Log-exporter is able to start with the provided configuration")
@@ -225,9 +222,9 @@ func reapplyFlags() {
 		for name, value := range appConfig.Flags {
 			err := flag.Set(name, value)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("Failed to set flag %v with new value %v", name, value)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"name": name, "value": value}).Error("Cannot set the flag to the new value")
 			} else {
-				log.Infof("Flag %v successfully set to new value %v", name, value)
+				log.WithFields(log.Fields{"name": name, "value": value}).Info("Flag set to the new value")
 			}
 		}
 	}

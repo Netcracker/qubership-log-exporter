@@ -25,15 +25,15 @@ import (
 )
 
 func CopyMetricFamiliesFromRegistry(registry *prometheus.Registry, queryName string) []*dto.MetricFamily {
-	log.Debugf("Deep copying metric families for the query %v", queryName)
+	log.WithField("query", queryName).Debug("Deep copying metric families")
 	mfs, err := registry.Gather()
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_1005).Errorf("Error during gathering for the query %v, skipping pushing the metric families to the gmQueue : %+v", queryName, err)
+		log.WithField(ec.FIELD, ec.LME_1005).WithFields(log.Fields{"query": queryName, "error": err}).Error("Error during gathering, skipping pushing the metric families to the gmQueue")
 	}
 	copy := Copy(mfs)
 	copyT, ok := copy.([]*dto.MetricFamily)
 	if !ok {
-		log.WithField(ec.FIELD, ec.LME_1602).Errorf("Error asserting the copy of the type %v to the []*dto.MetricFamily type, skipping pushing the metric families to the gmQueue", reflect.TypeOf(copy))
+		log.WithField(ec.FIELD, ec.LME_1602).WithField("copy_type", reflect.TypeOf(copy)).Error("Error asserting the copy to the []*dto.MetricFamily type, skipping pushing the metric families to the gmQueue")
 		return make([]*dto.MetricFamily, 0)
 	}
 	return copyT
@@ -45,12 +45,12 @@ func Copy(src interface{}) interface{} {
 	}
 
 	original := reflect.ValueOf(src)
-	log.Tracef("Deep copy call, original : %+v", original)
+	log.WithField("original", original).Trace("Deep copy call, original")
 
 	cpy := reflect.New(original.Type()).Elem()
 
 	recursiveCopy(original, cpy)
-	log.Tracef("Deep copy call, result : %+v", cpy)
+	log.WithField("cpy", cpy).Trace("Deep copy call, result")
 
 	return cpy.Interface()
 }

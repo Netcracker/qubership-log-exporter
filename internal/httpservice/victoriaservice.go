@@ -35,7 +35,7 @@ func NewVictoriaService(exportConfig *config.ExportConfig) *VictoriaService {
 	victoriaService := VictoriaService{}
 	victoriaService.exportConfig = exportConfig
 	victoriaService.url = exportConfig.Host + exportConfig.Endpoint
-	log.Infof("VictoriaService : Initialization completed : url = %v, exportConfig = %+v", victoriaService.url, exportConfig.GetSafeCopy())
+	log.WithFields(log.Fields{"url": victoriaService.url, "export_config": exportConfig.GetSafeCopy()}).Info("VictoriaService : Initialization completed")
 	return &victoriaService
 }
 
@@ -66,26 +66,26 @@ func (v *VictoriaService) PushBuffer(buffer *bytes.Buffer, queryName string) (st
 	if resp == nil {
 		return ec.LME_7110, fmt.Errorf("VictoriaService : From %v nil response is received", v.url)
 	} else if resp.Body == nil {
-		log.Debugf("VictoriaService : From %v response with nil body is received", v.url)
+		log.WithField("url", v.url).Debug("VictoriaService : A response with a nil body is received")
 	} else {
 		if resp.Body != nil {
 			defer func() {
 				if err := resp.Body.Close(); err != nil {
-					log.Errorf("VictoriaService : Error closing response body : %+v", err)
+					log.WithField("error", err).Error("VictoriaService : Error closing response body")
 				}
 			}()
 		}
 	}
-	log.Infof("VictoriaService : From %v for query %v response received : %v", v.url, queryName, resp.Status)
+	log.WithFields(log.Fields{"url": v.url, "query": queryName, "status": resp.Status}).Info("VictoriaService : Response received")
 	if resp.StatusCode >= 400 {
 		return ec.LME_7111, fmt.Errorf("VictoriaService : From %v response status code %v is received", v.url, resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_7113).Errorf("VictoriaService : From %v : Error reading victoria response body : %+v", v.url, err)
+		log.WithField(ec.FIELD, ec.LME_7113).WithFields(log.Fields{"url": v.url, "error": err}).Error("VictoriaService : Cannot read the victoria response body")
 	}
 	result := string(body)
-	log.Debugf("VictoriaService : From %v received body with length : %v", v.url, len(result))
-	log.Tracef("VictoriaService : From %v received response body : %v", v.url, result)
+	log.WithFields(log.Fields{"url": v.url, "length": len(result)}).Debug("VictoriaService : Body received")
+	log.WithFields(log.Fields{"url": v.url, "body": result}).Trace("VictoriaService : Response body received")
 	return "", nil
 }

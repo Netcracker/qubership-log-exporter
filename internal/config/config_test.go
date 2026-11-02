@@ -15,11 +15,34 @@
 package config
 
 import (
+	"bytes"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
 )
+
+func TestSafeExportConfigCanBeLoggedWithoutCredentials(t *testing.T) {
+	cfg := &ExportConfig{
+		TLSHostConfig:     TLSHostConfig{Host: "https://metrics.example", Password: "export-secret", DecryptedPassword: "export-plaintext", TlsConfig: &tls.Config{MinVersion: tls.VersionTLS12}},
+		LastTimestampHost: &LastTimestampHostConfig{TLSHostConfig: TLSHostConfig{Password: "timestamp-secret", DecryptedPassword: "timestamp-plaintext", TlsConfig: &tls.Config{MinVersion: tls.VersionTLS12}}},
+	}
+	safe := cfg.GetSafeCopy()
+	output, err := json.Marshal(safe)
+	if err != nil {
+		t.Fatalf("json.Marshal(GetSafeCopy()) = %v", err)
+	}
+	for _, secret := range []string{"export-secret", "export-plaintext", "timestamp-secret", "timestamp-plaintext"} {
+		if bytes.Contains(output, []byte(secret)) {
+			t.Errorf("safe export config contains %q: %s", secret, output)
+		}
+	}
+	if cfg.Password != "export-secret" || cfg.LastTimestampHost.Password != "timestamp-secret" || cfg.TlsConfig == nil || cfg.LastTimestampHost.TlsConfig == nil {
+		t.Errorf("GetSafeCopy mutated the live configuration: %+v", cfg)
+	}
+}
 
 func TestExampleConfigs(t *testing.T) {
 	log.SetLevel(log.ErrorLevel)

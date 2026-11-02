@@ -15,16 +15,91 @@
 package httpservice
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log_exporter/internal/config"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/snappy"
 	"github.com/prometheus/prometheus/prompb"
+	log "github.com/sirupsen/logrus"
 )
+
+func TestHTTPQueryLogsContainStatusWithoutRequestOrPayload(t *testing.T) {
+	queries := []struct {
+		name string
+		call func(*config.Config) (string, string, error)
+	}{
+		{"graylog", func(c *config.Config) (string, string, error) {
+			return CreateGraylogService(c).queryGraylog("test", time.Time{}, time.Time{})
+		}},
+		{"loki", func(c *config.Config) (string, string, error) {
+			return CreateLokiService(c).queryLoki("test", time.Time{}, time.Time{})
+		}},
+		{"newrelic", func(c *config.Config) (string, string, error) {
+			return CreateNewRelicService(c).queryNewRelic("test", time.Time{}, time.Time{})
+		}},
+	}
+	for _, query := range queries {
+		for _, status := range []int{http.StatusOK, http.StatusBadGateway} {
+			t.Run(fmt.Sprintf("%s/%d", query.name, status), func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(status)
+					_, _ = io.WriteString(w, "private-response-marker")
+				}))
+				defer server.Close()
+				var output bytes.Buffer
+				previousOutput, previousFormatter, previousLevel := log.StandardLogger().Out, log.StandardLogger().Formatter, log.GetLevel()
+				t.Cleanup(func() {
+					log.SetOutput(previousOutput)
+					log.SetFormatter(previousFormatter)
+					log.SetLevel(previousLevel)
+				})
+				log.SetOutput(&output)
+				log.SetFormatter(&log.JSONFormatter{})
+				log.SetLevel(log.TraceLevel)
+				cfg := &config.Config{
+					DsName: "source", Datasources: map[string]*config.DatasourceConfig{"source": {TLSHostConfig: config.TLSHostConfig{Host: server.URL, User: "account", Password: "private-auth-marker", ConnectionTimeout: time.Second}}},
+					Queries: map[string]*config.QueryConfig{"test": {QueryString: "private-query-marker", QueryStringJson: `"private-query-marker"`, FieldsInOrderJson: `[]`}},
+				}
+				_, _, err := query.call(cfg)
+				if (err != nil) != (status >= 400) {
+					t.Errorf("query() error = %v, status = %d", err, status)
+				}
+				foundStatus := false
+				for _, line := range strings.Split(strings.TrimSpace(output.String()), "\n") {
+					var record map[string]interface{}
+					if err := json.Unmarshal([]byte(line), &record); err != nil {
+						t.Errorf("invalid JSON record: %v; output=%q", err, line)
+						continue
+					}
+					if record["status_code"] == float64(status) {
+						foundStatus = true
+					}
+					for _, field := range []string{"response", "resp", "request", "request_body", "response_preview", "result"} {
+						if _, exists := record[field]; exists {
+							t.Errorf("record exposes %q: %s", field, line)
+						}
+					}
+				}
+				if !foundStatus {
+					t.Errorf("no status_code=%d record: %s", status, output.String())
+				}
+				for _, secret := range []string{"private-response-marker", "private-auth-marker", "private-query-marker"} {
+					if strings.Contains(output.String(), secret) {
+						t.Errorf("logs expose %q: %s", secret, output.String())
+					}
+				}
+			})
+		}
+	}
+}
 
 func TestMarshalWriteRequest(t *testing.T) {
 	request := &prompb.WriteRequest{

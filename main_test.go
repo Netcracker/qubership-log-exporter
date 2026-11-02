@@ -15,9 +15,37 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestCheckConfigReturnsFailureForInvalidConfiguration(t *testing.T) {
+	malformed := filepath.Join(t.TempDir(), "malformed.yaml")
+	if err := os.WriteFile(malformed, []byte("datasources: [\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	previousPath := *configPath
+	t.Cleanup(func() { *configPath = previousPath })
+	for _, test := range []struct {
+		name string
+		path string
+		want int
+	}{
+		{"valid", "examples/config_emu.yaml", 0},
+		{"invalid", "examples/config_incorrect.yaml", 1},
+		{"malformed", malformed, 1},
+		{"missing", filepath.Join(t.TempDir(), "missing.yaml"), 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			*configPath = test.path
+			if got := checkConfigAndExit(); got != test.want {
+				t.Errorf("checkConfigAndExit(%q) = %d, want %d", test.path, got, test.want)
+			}
+		})
+	}
+}
 
 func TestVersionString(t *testing.T) {
 	// Save original values
@@ -86,7 +114,3 @@ func TestVersionString_EmptyValues(t *testing.T) {
 		t.Error("Expected version string format even with empty values")
 	}
 }
-
-// Note: Other functions in main.go (like main(), initExports(), etc.) are difficult to unit test
-// because they depend on global state, configuration files, and external services.
-// Integration tests would be more appropriate for those functions.

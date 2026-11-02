@@ -43,7 +43,7 @@ func NewGDQueue(appConfig *config.Config) *GDQueue {
 	}
 	for queryName, queryConfig := range appConfig.Queries {
 		result.graylogDataByQuery[queryName] = make(chan *GraylogData, queryConfig.GDQueueSizeParsed)
-		log.Infof("For query %v GDQueue is created, size : %v", queryName, cap(result.graylogDataByQuery[queryName]))
+		log.WithFields(log.Fields{"query": queryName, "cap": cap(result.graylogDataByQuery[queryName])}).Info("GDQueue is created")
 	}
 
 	return result
@@ -53,31 +53,31 @@ func (gdq *GDQueue) Put(queryName string, graylogData *GraylogData) {
 	c := gdq.graylogDataByQuery[queryName]
 
 	if c == nil {
-		log.WithField(ec.FIELD, ec.LME_1624).Errorf("GDQueue Put : Attempting to put graylogData to channel for non-existent query %v", queryName)
+		log.WithField(ec.FIELD, ec.LME_1624).WithField("query", queryName).Error("GDQueue Put : Attempting to put graylogData to channel for non-existent query")
 		return
 	}
 
-	log.Debugf("GDQueue Put (blocking) : For query %v put graylogData, queue len is %v", queryName, len(c))
+	log.WithFields(log.Fields{"query": queryName, "c_count": len(c)}).Debug("GDQueue Put (blocking) : put graylogData")
 	c <- graylogData
 	size := len(c)
-	log.Debugf("GDQueue Put (blocking) : For query %v put successfully performed, queue len is %v", queryName, size)
+	log.WithFields(log.Fields{"query": queryName, "size": size}).Debug("GDQueue Put (blocking) : put successfully performed")
 	gdq.selfMonitorSetQueueSize(float64(size), queryName, time.Now())
 }
 
 func (gdq *GDQueue) Get(queryName string) (*GraylogData, bool) {
 	c := gdq.graylogDataByQuery[queryName]
 	if c == nil {
-		log.WithField(ec.FIELD, ec.LME_1621).Errorf("GDQueue Get : Attempting to get graylogData from channel for non-existent query %v", queryName)
+		log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("GDQueue Get : Attempting to get graylogData from channel for non-existent query")
 		return nil, false
 	}
 	result, ok := <-c
 	size := len(c)
 	if !ok {
-		log.WithField(ec.FIELD, ec.LME_1621).Errorf("GDQueue Get : For query %v chan is closed", queryName)
+		log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("GDQueue Get : chan is closed")
 	} else if result != nil {
-		log.Debugf("GDQueue Get : For query %v graylogData is extracted. Start time : %v ; end time : %v ; queue len : %v", queryName, result.StartTime, result.EndTime, size)
+		log.WithFields(log.Fields{"query": queryName, "start_time": result.StartTime, "end_time": result.EndTime, "size": size}).Debug("GDQueue Get : graylogData is extracted")
 	} else {
-		log.WithField(ec.FIELD, ec.LME_1604).Errorf("GDQueue Get : For query %v nil graylogData is extracted. Queue len : %v", queryName, size)
+		log.WithField(ec.FIELD, ec.LME_1604).WithFields(log.Fields{"query": queryName, "size": size}).Error("GDQueue Get : nil graylogData is extracted")
 	}
 	gdq.selfMonitorSetQueueSize(float64(size), queryName, time.Now())
 	return result, ok
@@ -86,10 +86,10 @@ func (gdq *GDQueue) Get(queryName string) (*GraylogData, bool) {
 func (gdq *GDQueue) CloseChan(queryName string) {
 	c := gdq.graylogDataByQuery[queryName]
 	if c == nil {
-		log.WithField(ec.FIELD, ec.LME_1621).Errorf("GDQueue CloseChan : Attempting to close channel for non-existent query %v", queryName)
+		log.WithField(ec.FIELD, ec.LME_1621).WithField("query", queryName).Error("GDQueue CloseChan : Attempting to close channel for non-existent query")
 		return
 	}
-	log.Infof("GDQueue CloseChan : For query %v chan is closed", queryName)
+	log.WithField("query", queryName).Info("GDQueue CloseChan : chan is closed")
 	close(c)
 }
 

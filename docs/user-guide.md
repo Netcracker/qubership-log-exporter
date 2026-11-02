@@ -29,57 +29,69 @@ The log-exporter (or Logs-to-Metrics-exporter, LME) tool is designed to evaluate
 
 You can specify the following command-line arguments to configure the log-exporter binary execution.
 
-| Name                      | Type   | Description                                        | Default            |
-|---------------------------|--------|----------------------------------------------------|--------------------|
-| check-config              | bool   | Print the log-exporter config analysis and exit    | false              |
-| config-path               | string | Path to the YAML configuration                     | config.yaml        |
-| croniter-precision        | string | Possible values: second, minute                    | second             |
-| disable-self-monitor      | bool   | Disables self monitoring                           | false              |
-| key-path                  | string | Path to the key for DSN encryption                 |                    |
-| listen-address            | string | The address to listen (port) for HTTP requests     | :8080              |
-| log-archivation           | bool   | Archiving rotated logs                             | true               |
-| log-format                | string | Log messages in JSON (`json`, `cloud`, `text`)     | text               |
-| log-level                 | string | Log level                                          | debug              |
-| log-max-age               | int    | Set maximum age of log backups in days             | 90                 |
-| log-max-backups           | int    | Set maximum number of log backups                  | 20                 |
-| log-max-size              | int    | Set maximum log size in Mb which triggers rotation | 100                |
-| log-path                  | string | Redirect log output to file (stdout if empty)      |                    |
-| log-rotation              | bool   | Enabling log rotation                              | true               |
-| version                   | bool   | Print the log-exporter version and exit            | false              |
+| Name | Type | Description | Default |
+| --------------------------- | -------- | ---------------------------------------------------- | -------------------- |
+| check-config | bool | Validate config; exit 0 if valid, 1 if invalid | false |
+| config-path | string | Path to the YAML configuration | config.yaml |
+| croniter-precision | string | Possible values: second, minute | second |
+| disable-self-monitor | bool | Disables self monitoring | false |
+| key-path | string | Path to the key for DSN encryption | |
+| listen-address | string | The address to listen (port) for HTTP requests | :8080 |
+| log-archivation | bool | Archiving rotated logs | true |
+| log-format | string | Output format: `json`, `cloud`, or `text` | `json` |
+| log-level | string | Log level | debug |
+| log-max-age | int | Set maximum age of log backups in days | 90 |
+| log-max-backups | int | Set maximum number of log backups | 20 |
+| log-max-size | int | Set maximum log size in Mb which triggers rotation | 100 |
+| log-path | string | Redirect log output to file (stdout if empty) | |
+| log-rotation | bool | Enabling log rotation | true |
+| version | bool | Print the log-exporter version and exit | false |
+
+The default `json` format writes one JSON object per line, including during startup and shutdown.
+Each record contains `time` (UTC with millisecond precision), `level`, `message`, and `class` (the source file).
+Context appears as additional fields, including `error_code` on coded errors.
+Values that JSON cannot represent, such as `NaN`, are written as strings.
+Quotes and line breaks are escaped, so a multiline message or stack trace stays on one physical line.
+
+Set `-log-format=text` to use the standard Logrus text format, or `-log-format=cloud` for the legacy cloud layout.
+The cloud layout includes structured fields in sorted order after `error_code` and escapes message and field line breaks.
+Logs go to stdout unless `-log-path` redirects them to a file.
+The `-version` and `-help` commands print plain text.
+If your log collector parses text records, set `-log-format=text` or Helm value `LME_LOG_FORMAT: text` before upgrading.
 
 ## Environment Variables
 
 You can specify the following environment variables to configure the log-exporter.
 
-| Name                    | Type       | Description                                           | Default        |
-|-------------------------|------------|-------------------------------------------------------|----------------|
-| CONFIG_FILE_PERMS       | octal uint | Permissions for config.file                           | 0600           |
-| KEY_FILE_PERMS          | octal uint | Permissions for key.file                              | 0600           |
-| GRAYLOG_USER            | string     | Graylog REST API user                                 |                |
-| GRAYLOG_PASSWORD        | string     | Password for the Graylog REST API user (not secure for non-cloud)|                |
-| VICTORIA_USER           | string     | Victoria vmagent user                                 |                |
-| VICTORIA_PASSWORD       | string     | Password for the Victoria vmagent user (not secure for non-cloud)|                |
-| PROMRW_USER             | string     | Prometheus remote-write user                          |                |
-| PROMRW_PASSWORD         | string     | Password for the Prometheus remote-write user (not secure for non-cloud)|                |
-| LAST_TIMESTAMP_USER     | string     | Last timestamp service user                           |                |
-| LAST_TIMESTAMP_PASSWORD | string     | Password for the last timestamp service user (not secure for non-cloud)|                |
+| Name | Type | Description | Default |
+| ------------------------- | ------------ | ------------------------------------------------------- | ---------------- |
+| CONFIG_FILE_PERMS | octal uint | Permissions for config.file | 0600 |
+| KEY_FILE_PERMS | octal uint | Permissions for key.file | 0600 |
+| GRAYLOG_USER | string | Graylog REST API user | |
+| GRAYLOG_PASSWORD | string | Password for the Graylog REST API user (not secure for non-cloud) | |
+| VICTORIA_USER | string | Victoria vmagent user | |
+| VICTORIA_PASSWORD | string | Password for the Victoria vmagent user (not secure for non-cloud) | |
+| PROMRW_USER | string | Prometheus remote-write user | |
+| PROMRW_PASSWORD | string | Password for the Prometheus remote-write user (not secure for non-cloud) | |
+| LAST_TIMESTAMP_USER | string | Last timestamp service user | |
+| LAST_TIMESTAMP_PASSWORD | string | Password for the last timestamp service user (not secure for non-cloud) | |
 
 ## LME Self-metrics
 
 Log-exporter provides self-metrics in Prometheus format. Supported metrics are all default Go application metrics and the following.
 
-| Name                         | Type      | Description                                                               |
-|------------------------------|-----------|---------------------------------------------------------------------------|
-| data_exporter_cache_size     | Gauge     | Log-exporter cache size (number of entries)                               |
-| graylog_response_error_count | Counter   | Count of errors during request to graylog and error responses             |
-| query_latency                | Histogram | Graylog request execution latency by query                                |
-| metric_evaluation_latency    | Histogram | Metric evaluation latency by metric                                       |
-| enrich_evaluation_latency    | Histogram | Enrich evaluation latency by query, enrich_index                          |
-| graylog_response_size        | Histogram | Graylog response size distribution by query                               |
-| regex_matched                | Counter   | Count of regular expressions have been matched by query, enrich_index     |
-| regex_not_matched            | Counter   | Count of regular expressions have not been matched by query, enrich_index |
-| panic_recovery_count         | Counter   | Count of panics have been recovered by query, process                     |
-| queue_size                   | Gauge     | Size of queues inside log-exporter application by query, queue            |
+| Name | Type | Description |
+| ------------------------------ | ----------- | --------------------------------------------------------------------------- |
+| data_exporter_cache_size | Gauge | Log-exporter cache size (number of entries) |
+| graylog_response_error_count | Counter | Count of errors during request to graylog and error responses |
+| query_latency | Histogram | Graylog request execution latency by query |
+| metric_evaluation_latency | Histogram | Metric evaluation latency by metric |
+| enrich_evaluation_latency | Histogram | Enrich evaluation latency by query, enrich_index |
+| graylog_response_size | Histogram | Graylog response size distribution by query |
+| regex_matched | Counter | Count of regular expressions have been matched by query, enrich_index |
+| regex_not_matched | Counter | Count of regular expressions have not been matched by query, enrich_index |
+| panic_recovery_count | Counter | Count of panics have been recovered by query, process |
+| queue_size | Gauge | Size of queues inside log-exporter application by query, queue |
 
 ## YAML Configuration
 

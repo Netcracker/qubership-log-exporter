@@ -38,12 +38,12 @@ func CreateNoResponseCacheRepo(appConfig *config.Config) *NoResponseCacheRepozit
 		cacheSizeStr := metricCfg.Parameters["cache_size"]
 		cacheSize, err := strconv.ParseInt(cacheSizeStr, 10, 32)
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Error parsing value '%v' for parameter cache_size for the metric %v : %+v ; default value 30 will be used", cacheSizeStr, metricName, err)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"cache_size_str": cacheSizeStr, "metric": metricName, "error": err}).Error("Cannot parse the cache_size parameter, the default value 30 will be used")
 			cacheSize = 30
 		}
 		// Ensure cacheSize is within valid int range and positive
 		if cacheSize < 1 || cacheSize > int64(math.MaxInt32) {
-			log.WithField(ec.FIELD, ec.LME_8104).Errorf("Parameter cache_size for the metric %v is out of bounds (%v); default value 30 will be used", metricName, cacheSize)
+			log.WithField(ec.FIELD, ec.LME_8104).WithFields(log.Fields{"metric": metricName, "cache_size": cacheSize}).Error("Parameter cache_size for the metric is out of bounds; the default value 30 is used")
 			cacheSize = 30
 		}
 		repo.caches[metricName] = CreateNoResponseCache(int(cacheSize))
@@ -96,7 +96,7 @@ func (nrc *NoResponseCache) shiftBatches() {
 	for i := len(nrc.cacheBatches) - 1; i > 0; i-- {
 		nrc.cacheBatches[i] = nrc.cacheBatches[i-1]
 		if nrc.cacheBatches[i] != nil {
-			log.Debugf("Shifting batch %v to %v ; batch size is %v", i-1, i, len(nrc.cacheBatches[i].cache))
+			log.WithFields(log.Fields{"index": i - 1, "i": i, "cache_count": len(nrc.cacheBatches[i].cache)}).Debug("Shifting batch")
 		}
 	}
 }
@@ -115,12 +115,12 @@ func (nrc *NoResponseCache) MarkAsHasResponse(correlationId string) {
 		}
 		cachedRequest := nrcb.cache[correlationId]
 		if cachedRequest != nil {
-			log.Debugf("MarkAsHasResponse : For correlationId %v response was found, hasResponse is set to true", correlationId)
+			log.WithField("correlation_id", correlationId).Debug("MarkAsHasResponse : response was found, hasResponse is set to true")
 			cachedRequest.HasResponse = true
 			return
 		}
 	}
-	log.Debugf("MarkAsHasResponse : For correlationId %v response was not found", correlationId)
+	log.WithField("correlation_id", correlationId).Debug("MarkAsHasResponse : response was not found")
 }
 
 func (nrc *NoResponseCache) CountNoResponseInTheLastBatchByOLV() map[string]*MetricSeries {
@@ -138,7 +138,7 @@ func (nrc *NoResponseCache) CountNoResponseInTheLastBatchByOLV() map[string]*Met
 			} else {
 				ms.Count++
 			}
-			log.Debugf("Request %v with olv %v has no response", correlationId, cachedRequest.Olv)
+			log.WithFields(log.Fields{"correlation_id": correlationId, "olv": cachedRequest.Olv}).Debug("Request has no response")
 		}
 	}
 	for _, ms := range result {
@@ -179,12 +179,12 @@ func (repo *RequestTimeCacheRepozitory) GetCache(query string, cacheName string)
 
 func (repo *RequestTimeCacheRepozitory) addCache(query string, cacheName string, cacheCfg *config.CacheConfig) {
 	if repo.caches[query] == nil {
-		log.Infof("Caches for query %v is null, creating new instance in caches repository", query)
+		log.WithField("query", query).Info("Caches for the query are null, creating a new instance in the caches repository")
 		queryCaches := make(map[string]*RequestTimeCache)
 		repo.caches[query] = queryCaches
 	}
 
-	log.Infof("Add caches %v for query %v; cacheCfg = %+v", cacheName, query, cacheCfg)
+	log.WithFields(log.Fields{"cache_name": cacheName, "query": query, "cache_cfg": cacheCfg}).Info("Adding a cache for the query")
 	requestTimeCache := CreateRequestTimeCache(cacheCfg)
 	repo.caches[query][cacheName] = requestTimeCache
 }
@@ -205,7 +205,7 @@ func CreateRequestTimeCache(cacheCfg *config.CacheConfig) *RequestTimeCache {
 func (rtc *RequestTimeCache) shiftBatches() {
 	for i := rtc.cacheCfg.Size - 1; i > 0; i-- {
 		rtc.cache[i] = rtc.cache[i-1]
-		log.Debugf("Shifting... %v batch size is %v", i, len(rtc.cache[i]))
+		log.WithFields(log.Fields{"i": i, "cache_count": len(rtc.cache[i])}).Debug("Shifting batch")
 	}
 }
 
@@ -222,7 +222,7 @@ func (rtc *RequestTimeCache) SearchRequestTimeInCache(correlationId string) int6
 	for i, batch := range rtc.cache {
 		value := batch[correlationId]
 		if value != 0 {
-			log.Debugf("For correlationId %v found value %v in batch %v", correlationId, value, i)
+			log.WithFields(log.Fields{"correlation_id": correlationId, "value": value, "i": i}).Debug("Found the value in a cache batch")
 			return value
 		}
 	}

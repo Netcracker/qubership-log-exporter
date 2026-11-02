@@ -28,7 +28,7 @@ MONITORING_EXT_MONITORING_QUERY_URL: '' # The Victoria vmauth URL (port is usual
 CSE_EXTERNAL_MONITORING_USER: '' # The MONITORING_EXT_MONITORING_QUERY_URL user. May be omitted if it is already set in the secret.
 CSE_EXTERNAL_MONITORING_PASSWORD: '' # The MONITORING_EXT_MONITORING_QUERY_URL password. May be omitted if it is already set in the secret.
 LME_MODE: 'push' # The parameter specifies LME working mode. Set to "pull" if LME is not expected to push metrics to Prometheus, Victoria or any other system and expected to work in the pull mode only
-LME_LOG_FORMAT: 'cloud' # The LME log format. The possible values are "cloud", "json", "text": "cloud" is compatible with logging guide, "text" is the standard logrus library format, "json" has the same content as "text", but in json
+LME_LOG_FORMAT: 'json' # The LME log format. The possible values are "json", "cloud", "text": "json" is the NDJSON format of the logging guide, "cloud" is the legacy text format of the same guide, "text" is the standard logrus library format
 CONSUL_URL: '' # Consul URL. LME uses Consul to extract log.level property value for log-level runtime modification.
 CONSUL_ADMIN_TOKEN: '' # Consul token for the Consul CONSUL_URL. Token must have enough rights to read log.level property value.
 LME_CONSUL_ENABLED: 'false' # Set to "true" if there is a need to modify LME log-level in runtime via Consul.
@@ -53,8 +53,8 @@ fullnameOverride: '' # Overrides the computed fullname. When set, used for all r
 nameOverride: '' # Overrides the chart name used in fullname when LME_APPLICATION_NAME is not set.
 PART_OF: '' # Overrides app.kubernetes.io/part-of label. Defaults to fullname when empty.
 LME_APPLICATION_NAME: 'log-exporter' # LME Application name. The parameter is required only if several log-exporter instances need to be installed in the same namespace (for example, one instance is communicating with the graylog, and the other is communicating with the New Relic)
-LME_LTS_RETRY_COUNT: "5" # Number of attempts to extract the last timestemp from Prometheus. If the value is 0, the last timestamp is not extracted; if the value is 1, retry is disabled.
-LME_LTS_RETRY_PERIOD: "10s" # The time period between attempts to extract the last timestemp from Prometheus or Victoria.
+LME_LTS_RETRY_COUNT: "5" # Number of attempts to extract the last timestamp from Prometheus. If the value is 0, the last timestamp is not extracted; if the value is 1, retry is disabled.
+LME_LTS_RETRY_PERIOD: "10s" # The time period between attempts to extract the last timestamp from Prometheus or Victoria.
 LME_DATASOURCE_RETRY: '' # The parameter allows to enable or disable retry mechanism for the datasource (Graylog or New Relic). For the graylog datasource retry is enabled by default, for the New Relic it is disabled by default.
 LME_DATASOURCE_RETRY_PERIOD: "5s" # The time period between attempts to extract the log records from the datasource (Graylog or New Relic).
 LME_PUSH_RETRY: 'true' # The parameter allows to enable or disable retry mechanism for the Prometheus or Victoria in the push mode.

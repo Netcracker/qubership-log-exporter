@@ -51,7 +51,7 @@ func (gtsq *GTSQueue) generateHistoryTimestamps() {
 
 	for queryName, queryConfig := range gtsq.appConfig.Queries {
 		gtsq.timestampsByQuery[queryName] = make(chan time.Time, queryConfig.GTSQueueSizeParsed)
-		log.Infof("For query %v GTSQueue is created, size : %v", queryName, cap(gtsq.timestampsByQuery[queryName]))
+		log.WithFields(log.Fields{"query": queryName, "cap": cap(gtsq.timestampsByQuery[queryName])}).Info("GTSQueue is created")
 	}
 
 	for queryName, queryConfig := range gtsq.appConfig.Queries {
@@ -64,15 +64,15 @@ func (gtsq *GTSQueue) generateHistoryTimestamps() {
 				return
 			}
 			if queryConfig.IntervalDuration <= 0 {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("NewGTSQueue : For query %v intervalDuration is %v, which is <= 0. History won't be processed for the query", queryName, queryConfig.IntervalDuration)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "interval_duration": queryConfig.IntervalDuration}).Error("NewGTSQueue : intervalDuration is <= 0. History won't be processed for the query")
 				return
 			}
 			if queryConfig.TimerangeDuration < 0 {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("NewGTSQueue : For query %v timerangeDuration is %v, which is < 0. History won't be processed for the query", queryName, queryConfig.IntervalDuration)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "interval_duration": queryConfig.IntervalDuration}).Error("NewGTSQueue : timerangeDuration is < 0. History won't be processed for the query")
 				return
 			}
 			if queryConfig.MaxHistoryLookupDuration <= 0 {
-				log.WithField(ec.FIELD, ec.LME_8102).Errorf("NewGTSQueue : For query %v maxHistoryLookupDuration is %v, which is <= 0. History won't be processed for the query", queryName, queryConfig.MaxHistoryLookupDuration)
+				log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "max_history_lookup_duration": queryConfig.MaxHistoryLookupDuration}).Error("NewGTSQueue : maxHistoryLookupDuration is <= 0. History won't be processed for the query")
 				return
 			}
 
@@ -84,61 +84,61 @@ func (gtsq *GTSQueue) generateHistoryTimestamps() {
 			for i := 0; i < retryCount; i++ {
 				unixTime, retryPossible, errc, err = gtsq.lastTimestampService.GetLastTimestampUnixTime(queryName, queryConfig)
 				if err == nil {
-					log.Infof("NewGTSQueue : For query %v attempt %v of %v to extract last timestamp succeeded", queryName, i+1, retryCount)
+					log.WithFields(log.Fields{"query": queryName, "attempt": i + 1, "retry_count": retryCount}).Info("NewGTSQueue : Attempt to extract the last timestamp succeeded")
 					break
 				} else if retryPossible {
-					log.Warnf("NewGTSQueue : For query %v attempt %v of %v to extract last timestamp is failed : Error during last timestamp evaluation : %+v", queryName, i+1, retryCount, err)
+					log.WithFields(log.Fields{"query": queryName, "index": i + 1, "retry_count": retryCount, "error": err}).Warn("NewGTSQueue : attempt to extract last timestamp is failed : Error during last timestamp evaluation")
 					time.Sleep(gtsq.appConfig.General.LTSRetryPeriodParsed)
 				} else {
-					log.Warnf("NewGTSQueue : For query %v attempt %v of %v : retry is not possible, error occurred : %+v", queryName, i+1, retryCount, err)
+					log.WithFields(log.Fields{"query": queryName, "index": i + 1, "retry_count": retryCount, "error": err}).Warn("NewGTSQueue : retry is not possible, error occurred")
 					break
 				}
 			}
 			if err != nil {
-				log.WithField(ec.FIELD, errc).Errorf("NewGTSQueue : For query %v history won't be processed : Error during last timestamp evaluation : %+v", queryName, err)
+				log.WithField(ec.FIELD, errc).WithFields(log.Fields{"query": queryName, "error": err}).Error("NewGTSQueue : history won't be processed : Error during last timestamp evaluation")
 				return
 			}
 			lastTimestamp := time.Unix(unixTime, 0)
-			log.Infof("NewGTSQueue : For query %v last timestamp extracted from Victoria : %v", queryName, lastTimestamp)
+			log.WithFields(log.Fields{"query": queryName, "last_timestamp": lastTimestamp}).Info("NewGTSQueue : last timestamp extracted from Victoria")
 
 			nearestUpcomingCronTime, err := getNearestUpcomingCronTime(queryConfig, croniter)
 			if err != nil {
-				log.WithField(ec.FIELD, ec.LME_1608).Errorf("NewGTSQueue : History timestamp processing will be skipped for query %v : Error evaluating nearestTimestamp : %+v", queryName, err)
+				log.WithField(ec.FIELD, ec.LME_1608).WithFields(log.Fields{"query": queryName, "error": err}).Error("NewGTSQueue : History timestamp processing will be skipped : Error evaluating nearestTimestamp")
 				return
 			} else {
-				log.Infof("NewGTSQueue : nearestUpcomingCronTime for query %v : %v", queryName, nearestUpcomingCronTime)
+				log.WithFields(log.Fields{"query": queryName, "nearest_upcoming_cron_time": nearestUpcomingCronTime}).Info("NewGTSQueue : nearestUpcomingCronTime evaluated")
 			}
 
 			if lastTimestamp.After(time.Now()) {
-				log.WithField(ec.FIELD, ec.LME_7130).Errorf("NewGTSQueue : For query %v history won't be processed : Timestamp extracted from Victoria is after current time", queryName)
+				log.WithField(ec.FIELD, ec.LME_7130).WithField("query", queryName).Error("NewGTSQueue : history won't be processed : Timestamp extracted from Victoria is after current time")
 				return
 			}
 
 			nearestUpcomingGraylogTime := nearestUpcomingCronTime.Add(-queryConfig.QueryLagDuration - queryConfig.TimerangeDuration)
-			log.Infof("NewGTSQueue : nearestUpcomingGraylogTime for query %v : %v", queryName, nearestUpcomingGraylogTime)
+			log.WithFields(log.Fields{"query": queryName, "nearest_upcoming_graylog_time": nearestUpcomingGraylogTime}).Info("NewGTSQueue : nearestUpcomingGraylogTime evaluated")
 			historyDuration := nearestUpcomingGraylogTime.Sub(lastTimestamp)
-			log.Infof("NewGTSQueue : historyDuration for query %v : %v", queryName, historyDuration)
+			log.WithFields(log.Fields{"query": queryName, "history_duration": historyDuration}).Info("NewGTSQueue : historyDuration evaluated")
 			if historyDuration > queryConfig.MaxHistoryLookupDuration {
-				log.Infof("NewGTSQueue : For query %v historyDuration %v is bigger than MaxHistoryLookupDuration %v; historyDuration will be limited", queryName, historyDuration, queryConfig.MaxHistoryLookupDuration)
+				log.WithFields(log.Fields{"query": queryName, "history_duration": historyDuration, "max_history_lookup_duration": queryConfig.MaxHistoryLookupDuration}).Info("NewGTSQueue : historyDuration is bigger than MaxHistoryLookupDuration; historyDuration is limited")
 				historyDuration = queryConfig.MaxHistoryLookupDuration
 			}
 			historySize := historyDuration.Nanoseconds() / queryConfig.IntervalDuration.Nanoseconds()
-			log.Infof("NewGTSQueue : historySize for query %v : %v", queryName, historySize)
+			log.WithFields(log.Fields{"query": queryName, "history_size": historySize}).Info("NewGTSQueue : historySize evaluated")
 			if historySize >= int64(queryConfig.GTSQueueSizeParsed) {
 				historySize = int64(queryConfig.GTSQueueSizeParsed)
 			}
 			if historySize <= 0 {
-				log.Infof("NewGTSQueue : For query %v history won't be processed : historySize is %v", queryName, historySize)
+				log.WithFields(log.Fields{"query": queryName, "history_size": historySize}).Info("NewGTSQueue : history won't be processed : historySize is not positive")
 				return
 			}
-			log.Infof("NewGTSQueue : historySize after checks for query %v : %v", queryName, int(historySize))
+			log.WithFields(log.Fields{"query": queryName, "history_size": int(historySize)}).Info("NewGTSQueue : historySize after checks")
 			firstGraylogHistoryTime := nearestUpcomingGraylogTime.Add(-queryConfig.IntervalDuration * time.Duration(historySize))
-			log.Infof("NewGTSQueue : firstGraylogHistoryTime for query %v : %v", queryName, firstGraylogHistoryTime)
+			log.WithFields(log.Fields{"query": queryName, "first_graylog_history_time": firstGraylogHistoryTime}).Info("NewGTSQueue : firstGraylogHistoryTime evaluated")
 			result := make([]time.Time, 0, int(historySize))
 			for i := 0; i < int(historySize); i++ {
 				result = append(result, firstGraylogHistoryTime.Add(queryConfig.IntervalDuration*time.Duration(i)))
 			}
-			log.Infof("NewGTSQueue : History timestamps for query %v are : %+v", queryName, result)
+			log.WithFields(log.Fields{"query": queryName, "result": result}).Info("NewGTSQueue : History timestamps generated")
 			for _, timestamp := range result {
 				gtsq.timestampsByQuery[queryName] <- timestamp
 			}
@@ -148,24 +148,24 @@ func (gtsq *GTSQueue) generateHistoryTimestamps() {
 
 func (gtsq *GTSQueue) scheduleTimestampGenerationForQuery(queryName string) {
 	queryConfig := gtsq.appConfig.Queries[queryName]
-	log.Debugf("queryName : %v, queryConfig: %+v", queryName, queryConfig)
+	log.WithFields(log.Fields{"query": queryName, "query_config": queryConfig}).Debug("Scheduling timestamp generation for the query")
 	if queryConfig.QueryLagDuration < 0 || queryConfig.TimerangeDuration < 0 {
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("For query %v QueryLagDuration = %v; TimerangeDuration = %v , which is is incorrect. Query will be skipped", queryName, queryConfig.QueryLagDuration, queryConfig.TimerangeDuration)
+		log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"query": queryName, "query_lag_duration": queryConfig.QueryLagDuration, "timerange_duration": queryConfig.TimerangeDuration}).Error("QueryLagDuration or TimerangeDuration is incorrect. Query will be skipped")
 		gtsq.CloseChan(queryName)
 		return
 	}
 	res, err := gtsq.croniter.AddFunc(queryConfig.Croniter, func() {
 		currentTime := time.Now().UTC().Round(time.Second)
 		startTime := currentTime.Add(-queryConfig.QueryLagDuration - queryConfig.TimerangeDuration)
-		log.Debugf("For query %v put time %v to gtsQueue (currentTime = %v)", queryName, startTime, currentTime)
+		log.WithFields(log.Fields{"query": queryName, "start_time": startTime, "current_time": currentTime}).Debug("Put time to gtsQueue")
 		gtsq.Put(queryName, startTime)
 	})
 	if err != nil {
 		gtsq.appConfig.Queries[queryName].CronEntryID = -1
-		log.WithField(ec.FIELD, ec.LME_1608).Errorf("During registering query %v in croniter following error occurred : %+v", queryName, err)
+		log.WithField(ec.FIELD, ec.LME_1608).WithFields(log.Fields{"query": queryName, "error": err}).Error("During registering the query in croniter the following error occurred")
 	} else {
 		gtsq.appConfig.Queries[queryName].CronEntryID = int(res)
-		log.Infof("Query %v is registered in croniter with id %v", queryName, int(res))
+		log.WithFields(log.Fields{"query": queryName, "cron_entry_id": int(res)}).Info("Query is registered in croniter")
 	}
 }
 
@@ -186,17 +186,17 @@ func (gtsq *GTSQueue) Put(queryName string, timestamp time.Time) {
 	c := gtsq.timestampsByQuery[queryName]
 
 	if c == nil {
-		log.WithField(ec.FIELD, ec.LME_1624).Errorf("GTSQueue Put : Attempting to put timestamp for execution to channel for non-existent query %v", queryName)
+		log.WithField(ec.FIELD, ec.LME_1624).WithField("query", queryName).Error("GTSQueue Put : Attempting to put timestamp for execution to channel for non-existent query")
 		return
 	}
 
 	select {
 	case c <- timestamp:
 		size := len(c)
-		log.Debugf("GTSQueue Put : For query %v put timestamp %v, queue len is %v", queryName, timestamp, size)
+		log.WithFields(log.Fields{"query": queryName, "timestamp": timestamp, "size": size}).Debug("GTSQueue Put : put timestamp")
 		gtsq.selfMonitorSetQueueSize(float64(size), queryName, time.Now())
 	default:
-		log.WithField(ec.FIELD, ec.LME_1625).Errorf("GTSQueue Put : Attempting to put timestamp for execution to channel for query %v : channel is full, len == %v", queryName, len(c))
+		log.WithField(ec.FIELD, ec.LME_1625).WithFields(log.Fields{"query": queryName, "c_count": len(c)}).Error("GTSQueue Put : Attempting to put timestamp for execution to channel, but the channel is full")
 	}
 }
 
@@ -204,14 +204,14 @@ func (gtsq *GTSQueue) Get(queryName string) (time.Time, bool) {
 	c := gtsq.timestampsByQuery[queryName]
 	result, ok := <-c
 	size := len(c)
-	log.Debugf("GTSQueue Get : For query %v timestamp %v is extracted, queue len is %v", queryName, result, size)
+	log.WithFields(log.Fields{"query": queryName, "result": result, "size": size}).Debug("GTSQueue Get : timestamp is extracted")
 	gtsq.selfMonitorSetQueueSize(float64(size), queryName, time.Now())
 	return result, ok
 }
 
 func (gtsq *GTSQueue) CloseChan(queryName string) {
 	c := gtsq.timestampsByQuery[queryName]
-	log.Infof("GTSQueue CloseChan : For query %v chan is closed", queryName)
+	log.WithField("query", queryName).Info("GTSQueue CloseChan : chan is closed")
 	close(c)
 }
 

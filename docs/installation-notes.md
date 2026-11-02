@@ -26,9 +26,9 @@ This document describes the installation process for the log-exporter service.
 
 The log-exporter deployment artifact contains the following list of services.
 
-| Service Name      | Description                          |
-|-------------------|--------------------------------------|
-| log-exporter      | Service for log-exporter application |
+| Service Name | Description |
+| ------------------- | -------------------------------------- |
+| log-exporter | Service for log-exporter application |
 
 ## Prerequisites
 
@@ -60,11 +60,11 @@ LME can use Consul KV-storage for LME log-level runtime modification.
 
 ### Third-Party Software
 
-| Name                   | Version                                                  |
-|------------------------|----------------------------------------------------------|
-| OpenShift/Kubernetes   | 3.11 (Enterprise or Origin edition)/1.20+                |
-| Graylog                | v3 or higher                                             |
-| Victoria Metrics       | >=v1.68.0 (probably also works fine on earlier versions) |
+| Name | Version |
+| ------------------------ | ---------------------------------------------------------- |
+| OpenShift/Kubernetes | 3.11 (Enterprise or Origin edition)/1.20+ |
+| Graylog | v3 or higher |
+| Victoria Metrics | >=v1.68.0 (probably also works fine on earlier versions) |
 
 ## Deployment Configuration
 
@@ -118,66 +118,66 @@ The following is the full list of the helm parameters that defines the log-expor
 
 ### General helm Parameters
 
-| Parameter                                         | Mandatory | Default                                               | Value Example                             |Description                                                                                                                                                                                         |
-|---------------------------------------------------|:-------------:|-------------------------------------------------------|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| GRAYLOG_UI_URL                                    |     N         | `https://graylog.logging.${CLOUD_PUBLIC_HOST}/`     | `https://<GRAYLOG_SERVER_URL>` |The Graylog service URL to which the log-exporter is connected.                                                                                             |
-| CSE_GRAYLOG_USER                                  |     N         | -                                                     | user                                      |The Graylog user. May be omitted if it is already set in the secret.                                                                                           |
-| CSE_GRAYLOG_PASSWORD                              |     N         | -                                                     | password                                  |The Graylog password. May be omitted if it is already set in the secret.                                                                                       |
-| GRAYLOG_HOST                                      |     N         | -                                                     | `https://<GRAYLOG_SERVER_URL>`    |The parameter allows to overwrite  GRAYLOG_UI_URL.                                                                                                                                                  |
-| GRAYLOG_USER                                      |     N         | -                                                     | user                                      |The parameter allows to overwrite  CSE_GRAYLOG_USER.                                                                                                                                                |
-| GRAYLOG_PASSWORD                                  |     N         | -                                                     | password                                  |The parameter allows to overwrite  CSE_GRAYLOG_PASSWORD.                                                                                                                                            |
-| LME_DATASOURCE_TYPE                               |     N         | graylog                                               | graylog                                   |LME datasource type. Possible values are "graylog", "loki" and "newrelic". Configure this only if you are fully aware of Loki and New Relic integration functionality.                              |
-| LME_NEWRELIC_URL                                  |     N         | -                                                     | `https://<NEWRELIC_SERVER_URL>`   |URL of New Relic Insights query API.                                                                                                                                                                |
-| LME_NEWRELIC_ACCOUNT_ID                           |     N         | -                                                     |                                           |New Relic Account ID.                                                                                                                                                                               |
-| LME_NEWRELIC_X_QUERY_KEY                          |     N         | -                                                     |                                           |New Relic X-Query-Key.                                                                                                                                                                              |
-| LME_LOKI_URL                                      |     N         | -                                                     | `https://<LOKI_SERVER_URL>`       |The Loki service URL to which the log-exporter is connected.                                                                                                                                        |
-| LME_LOKI_USER                                     |     N         | -                                                     | user                                      |The Loki user. May be omitted if it is already set in the secret.                                                                                                                                   |
-| LME_LOKI_PASSWORD                                 |     N         | -                                                     | password                                  |The Loki password. May be omitted if it is already set in the secret.                                                                                                                               |
-| VICTORIA_HOST                                     |     N         | `http://vmagent-k8s.platform-monitoring:8429` | `https://<VICTORIA_VMAGENT_URL>:<PORT>` |The Victoria vmagent service URL (port is usually 8429).                                                                                                                                |
-| VICTORIA_USER                                     |     N         | -                                                     | user                                      |The Victoria vmagent user. May be omitted if it is already set in the secret.                                                                                                                       |
-| VICTORIA_PASSWORD                                 |     N         | -                                                     | password                                  |The Victoria vmagent password. May be omitted if it is already set in the secret.                                                                                                                   |
-| PROMRW_HOST                                       |     N         | `http://vmagent-k8s.platform-monitoring:8429` | `https://<PROMRW_URL>:<PORT>`          |The Carbon-clickhouse service URL.                                                                                                                                                      |
-| PROMRW_USER                                       |     N         | -                                                     | user                                      |The Carbon-clickhouse user. May be omitted if it is already set in the secret. Usually empty.                                                                                                       |
-| PROMRW_PASSWORD                                   |     N         | -                                                     | password                                  |The Carbon-clickhouse password. May be omitted if it is already set in the secret. Usually empty.                                                                                                   |
-| MONITORING_NAMESPACE                              |     N         | platform-monitoring                                   | platform-monitoring                       |The name of the monitoring namespace. The parameter is used for evaluating the default values of VICTORIA_HOST, PROMRW_HOST, and MONITORING_EXT_MONITORING_QUERY_URL.  |
-| MONITORING_TYPE                                   |     N         | VictoriaDB                                            | VictoriaDB                                |The monitoring type on the cloud. Possible values are "VictoriaDB" (data is pushed plain-text to VMAgent) and "Prometheus" (data is pushed in promrw binary format).  |
-| MONITORING_EXT_MONITORING_QUERY_URL           |     N         | `http://vmsingle-k8s.platform-monitoring:8429` | `https://<VICTORIA_VMAUTH_URL>:<PORT>`  |The Victoria vmauth URL (port is usually 8427 or 8429) OR graphite-clickhouse service URL for PROMRW case.                                        |
-| CSE_EXTERNAL_MONITORING_USER                  |     N         | -                                                     | user                                      |The MONITORING_EXT_MONITORING_QUERY_URL user. May be omitted if it is already set in the secret.                                                               |
-| CSE_EXTERNAL_MONITORING_PASSWORD              |     N         | -                                                     | password                                  |The MONITORING_EXT_MONITORING_QUERY_URL password. May be omitted if it is already set in the secret.                                                           |
-| LAST_TIMESTAMP_HOST                               |     N         | -                                                     | `https://<VICTORIA_VMAUTH_URL>:<PORT>`  |The parameter allows to overwrite MONITORING_EXT_MONITORING_QUERY_URL.                                                                                                                  |
-| LAST_TIMESTAMP_USER                               |     N         | -                                                     | user                                      |The parameter allows to overwrite CSE_EXTERNAL_MONITORING_USER.                                                                                                                                     |
-| LAST_TIMESTAMP_PASSWORD                       |     N         | -                                                     | password                                  |The parameter allows to overwrite CSE_EXTERNAL_MONITORING_PASSWORD.                                                                                                                                 |
-| LME_MODE                                          |     N         | push                                                  | pull                                      |The parameter specifies the LME working mode. Set to "pull" if LME is not expected to push metrics to Prometheus, Victoria, or any other system and the LME is expected to work in the pull mode only. |
-| CONFIG_MAP                                        |     N         | -                                                     |     |The config map content. If this variable is set, the out-of-box configuration is ignored.                                                                                                           |
-| CONFIG_QUERIES                                    |     N         | -                                                     |     |Additional content of the config map queries section. The out-of-box configuration is not ignored.                                                                                                  |
-| CONFIG_METRICS                                    |     N         | -                                                     |     |Additional content of the config map metrics section. The out-of-box configuration is not ignored.                                                                                                  |
-| PUSH_CLOUD_LABELS                                 |     N         | -                                                     |                                           |A map of additional labels to be added to all pushed metrics.                                                                                                                                       |
-| LOG_LEVEL                                         |     N         | -                                                     | debug                                     |The LME log-level. The possible values are "trace", "debug", "info", "warn" (or "warning"), "error", "fatal", and "panic".                                                                          |
-| CONSUL_URL                                        |     N         | `http://consul-server.consul:8500`            |                                           |Consul URL. LME uses Consul to extract log.level property value for log-level runtime modification.                                                            |
-| CONSUL_ADMIN_TOKEN                                |     N         | -                                                     | 01234567-0123-4123-4123-0123456789ab      |Consul token for the Consul CONSUL_URL. The token must have enough rights to read log.level property value.                                                    |
-| LME_CONSUL_ENABLED                                |     N         | false                                                 | true                                      |Set to "true" if there is a need to modify LME log-level in runtime via Consul.                                                                                                                     |
-| LME_CONSUL_CHECK_PERIOD                           |     N         | 1m                                                    | 1m30s                                     |The parameter specifies the period between calls to Consul in Go language time.ParseDuration format. Less period means more frequent calls and faster reaction to log.level modification, but higher load on Consul. |
-| LME_CONSUL_LOG_LEVEL_PATH                         |     N         | `config/<namespace>/lme/log.level`                  | debug                                     |The parameter specifies the path to the log.level property in the Consul key-value storage if the default path is not suitable.                                                                     |
-| LME_LOG_FORMAT                                    |     N         | `cloud`                                                 | `json`                                      |The LME log format. The possible values are `cloud`, `json`, `text`. `cloud` is compatible with logging guide, `text` is the standard logrus library format, and `json` has the same content as `text`, but in JSON. |
-| DEPLOYMENT_STRATEGY_TYPE                      |     N         |                                                       |                                           | Kubernetes rolling update deployment strategy. Possible values are "recreate", "best_effort_controlled_rollout", "ramped_slow_rollout", and "custom_rollout".                                      |
-| DEPLOYMENT_STRATEGY_MAXSURGE                  |     N         | 25%                                                   | 25%                                       | The parameter sets maxSurge if DEPLOYMENT_STRATEGY_TYPE is "custom_rollout".                                                                                                                       |
-| DEPLOYMENT_STRATEGY_MAXUNAVAILABLE        |     N         | 25%                                                   | 25%                                       | The parameter sets maxUnavailable if DEPLOYMENT_STRATEGY_TYPE is "custom_rollout".                                                                                                                 |
+| Parameter | Mandatory | Default | Value Example | Description |
+| --------------------------------------------------- | :-------------: | ------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GRAYLOG_UI_URL | N | `https://graylog.logging.${CLOUD_PUBLIC_HOST}/` | `https://<GRAYLOG_SERVER_URL>` | The Graylog service URL to which the log-exporter is connected. |
+| CSE_GRAYLOG_USER | N | - | user | The Graylog user. May be omitted if it is already set in the secret. |
+| CSE_GRAYLOG_PASSWORD | N | - | password | The Graylog password. May be omitted if it is already set in the secret. |
+| GRAYLOG_HOST | N | - | `https://<GRAYLOG_SERVER_URL>` | The parameter allows to overwrite  GRAYLOG_UI_URL. |
+| GRAYLOG_USER | N | - | user | The parameter allows to overwrite  CSE_GRAYLOG_USER. |
+| GRAYLOG_PASSWORD | N | - | password | The parameter allows to overwrite  CSE_GRAYLOG_PASSWORD. |
+| LME_DATASOURCE_TYPE | N | graylog | graylog | LME datasource type. Possible values are "graylog", "loki" and "newrelic". Configure this only if you are fully aware of Loki and New Relic integration functionality. |
+| LME_NEWRELIC_URL | N | - | `https://<NEWRELIC_SERVER_URL>` | URL of New Relic Insights query API. |
+| LME_NEWRELIC_ACCOUNT_ID | N | - | | New Relic Account ID. |
+| LME_NEWRELIC_X_QUERY_KEY | N | - | | New Relic X-Query-Key. |
+| LME_LOKI_URL | N | - | `https://<LOKI_SERVER_URL>` | The Loki service URL to which the log-exporter is connected. |
+| LME_LOKI_USER | N | - | user | The Loki user. May be omitted if it is already set in the secret. |
+| LME_LOKI_PASSWORD | N | - | password | The Loki password. May be omitted if it is already set in the secret. |
+| VICTORIA_HOST | N | `http://vmagent-k8s.platform-monitoring:8429` | `https://<VICTORIA_VMAGENT_URL>:<PORT>` | The Victoria vmagent service URL (port is usually 8429). |
+| VICTORIA_USER | N | - | user | The Victoria vmagent user. May be omitted if it is already set in the secret. |
+| VICTORIA_PASSWORD | N | - | password | The Victoria vmagent password. May be omitted if it is already set in the secret. |
+| PROMRW_HOST | N | `http://vmagent-k8s.platform-monitoring:8429` | `https://<PROMRW_URL>:<PORT>` | The Carbon-clickhouse service URL. |
+| PROMRW_USER | N | - | user | The Carbon-clickhouse user. May be omitted if it is already set in the secret. Usually empty. |
+| PROMRW_PASSWORD | N | - | password | The Carbon-clickhouse password. May be omitted if it is already set in the secret. Usually empty. |
+| MONITORING_NAMESPACE | N | platform-monitoring | platform-monitoring | The name of the monitoring namespace. The parameter is used for evaluating the default values of VICTORIA_HOST, PROMRW_HOST, and MONITORING_EXT_MONITORING_QUERY_URL. |
+| MONITORING_TYPE | N | VictoriaDB | VictoriaDB | The monitoring type on the cloud. Possible values are "VictoriaDB" (data is pushed plain-text to VMAgent) and "Prometheus" (data is pushed in promrw binary format). |
+| MONITORING_EXT_MONITORING_QUERY_URL | N | `http://vmsingle-k8s.platform-monitoring:8429` | `https://<VICTORIA_VMAUTH_URL>:<PORT>` | The Victoria vmauth URL (port is usually 8427 or 8429) OR graphite-clickhouse service URL for PROMRW case. |
+| CSE_EXTERNAL_MONITORING_USER | N | - | user | The MONITORING_EXT_MONITORING_QUERY_URL user. May be omitted if it is already set in the secret. |
+| CSE_EXTERNAL_MONITORING_PASSWORD | N | - | password | The MONITORING_EXT_MONITORING_QUERY_URL password. May be omitted if it is already set in the secret. |
+| LAST_TIMESTAMP_HOST | N | - | `https://<VICTORIA_VMAUTH_URL>:<PORT>` | The parameter allows to overwrite MONITORING_EXT_MONITORING_QUERY_URL. |
+| LAST_TIMESTAMP_USER | N | - | user | The parameter allows to overwrite CSE_EXTERNAL_MONITORING_USER. |
+| LAST_TIMESTAMP_PASSWORD | N | - | password | The parameter allows to overwrite CSE_EXTERNAL_MONITORING_PASSWORD. |
+| LME_MODE | N | push | pull | The parameter specifies the LME working mode. Set to "pull" if LME is not expected to push metrics to Prometheus, Victoria, or any other system and the LME is expected to work in the pull mode only. |
+| CONFIG_MAP | N | - | | The config map content. If this variable is set, the out-of-box configuration is ignored. |
+| CONFIG_QUERIES | N | - | | Additional content of the config map queries section. The out-of-box configuration is not ignored. |
+| CONFIG_METRICS | N | - | | Additional content of the config map metrics section. The out-of-box configuration is not ignored. |
+| PUSH_CLOUD_LABELS | N | - | | A map of additional labels to be added to all pushed metrics. |
+| LOG_LEVEL | N | - | debug | The LME log-level. The possible values are "trace", "debug", "info", "warn" (or "warning"), "error", "fatal", and "panic". |
+| CONSUL_URL | N | `http://consul-server.consul:8500` | | Consul URL. LME uses Consul to extract log.level property value for log-level runtime modification. |
+| CONSUL_ADMIN_TOKEN | N | - | 01234567-0123-4123-4123-0123456789ab | Consul token for the Consul CONSUL_URL. The token must have enough rights to read log.level property value. |
+| LME_CONSUL_ENABLED | N | false | true | Set to "true" if there is a need to modify LME log-level in runtime via Consul. |
+| LME_CONSUL_CHECK_PERIOD | N | 1m | 1m30s | The parameter specifies the period between calls to Consul in Go language time.ParseDuration format. Less period means more frequent calls and faster reaction to log.level modification, but higher load on Consul. |
+| LME_CONSUL_LOG_LEVEL_PATH | N | `config/<namespace>/lme/log.level` | debug | The parameter specifies the path to the log.level property in the Consul key-value storage if the default path is not suitable. |
+| LME_LOG_FORMAT | N | `json` | `json` | The LME log format. The possible values are `json`, `cloud`, `text`. `json` is the NDJSON format of the logging guide, `cloud` is the legacy text format of the same guide, and `text` is the standard logrus library format. |
+| DEPLOYMENT_STRATEGY_TYPE | N | | | Kubernetes rolling update deployment strategy. Possible values are "recreate", "best_effort_controlled_rollout", "ramped_slow_rollout", and "custom_rollout". |
+| DEPLOYMENT_STRATEGY_MAXSURGE | N | 25% | 25% | The parameter sets maxSurge if DEPLOYMENT_STRATEGY_TYPE is "custom_rollout". |
+| DEPLOYMENT_STRATEGY_MAXUNAVAILABLE | N | 25% | 25% | The parameter sets maxUnavailable if DEPLOYMENT_STRATEGY_TYPE is "custom_rollout". |
 
 ### Technical helm Parameters
 
 All of the following parameters are optional.
 
-| Parameter                    | Default | Value Example |Description                                                                                                        |
-|------------------------------|---------|---------------|-------------------------------------------------------------------------------------------------------------------|
-| LME_APPLICATION_NAME         | log-exporter | log-exporter |The LME application name. The parameter is required only if several log-exporter instances need to be installed in the same namespace (for example, one instance is communicating with Graylog, and the other is communicating with New Relic).|
-| LME_LTS_RETRY_COUNT          | 5       | 5             |Number of attempts to extract the last timestamp from Prometheus. If the value is "0", the last timestamp is not extracted; if the value is "1", retry is disabled. |
-| LME_LTS_RETRY_PERIOD         | 10s     | 10s           |The time period between attempts to extract the last timestamp from Prometheus or Victoria.                        |
-| LME_DATASOURCE_RETRY         | true    | true          |The parameter allows to enable or disable the retry mechanism for the datasource (Graylog or New Relic).           |
-| LME_DATASOURCE_RETRY_PERIOD  | 5s      | 5s            |The time period between attempts to extract the log records from the datasource (Graylog or New Relic).            |
-| LME_PUSH_RETRY               | true    | true          |The parameter allows to enable or disable the retry mechanism for Prometheus or Victoria in the push mode.         |
-| LME_PUSH_RETRY_PERIOD        | 5s      | 5s            |The time period between attempts to push the metrics to Prometheus or Victoria.                                    |
-| GRAYLOG_EMULATOR_ENABLED | false   | true          |To enable Graylog emulator, set this parameter to "true". Must be used only on the dev and test environments.      |
-| GRAYLOG_EMULATOR_DATA    | -       | -             |The list of Graylog emulator responses. If the parameter is not set, the default data set is used. The parameter is used only if GRAYLOG_EMULATOR_ENABLED is set to "true". |
+| Parameter | Default | Value Example | Description |
+| ------------------------------ | --------- | --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| LME_APPLICATION_NAME | log-exporter | log-exporter | The LME application name. The parameter is required only if several log-exporter instances need to be installed in the same namespace (for example, one instance is communicating with Graylog, and the other is communicating with New Relic). |
+| LME_LTS_RETRY_COUNT | 5 | 5 | Number of attempts to extract the last timestamp from Prometheus. If the value is "0", the last timestamp is not extracted; if the value is "1", retry is disabled. |
+| LME_LTS_RETRY_PERIOD | 10s | 10s | The time period between attempts to extract the last timestamp from Prometheus or Victoria. |
+| LME_DATASOURCE_RETRY | true | true | The parameter allows to enable or disable the retry mechanism for the datasource (Graylog or New Relic). |
+| LME_DATASOURCE_RETRY_PERIOD | 5s | 5s | The time period between attempts to extract the log records from the datasource (Graylog or New Relic). |
+| LME_PUSH_RETRY | true | true | The parameter allows to enable or disable the retry mechanism for Prometheus or Victoria in the push mode. |
+| LME_PUSH_RETRY_PERIOD | 5s | 5s | The time period between attempts to push the metrics to Prometheus or Victoria. |
+| GRAYLOG_EMULATOR_ENABLED | false | true | To enable Graylog emulator, set this parameter to "true". Must be used only on the dev and test environments. |
+| GRAYLOG_EMULATOR_DATA | - | - | The list of Graylog emulator responses. If the parameter is not set, the default data set is used. The parameter is used only if GRAYLOG_EMULATOR_ENABLED is set to "true". |
 
 **NOTE:**
 

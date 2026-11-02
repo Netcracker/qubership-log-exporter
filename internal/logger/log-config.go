@@ -16,11 +16,14 @@ package logger
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	ec "log_exporter/internal/utils/errorcodes"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sort"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -28,6 +31,9 @@ import (
 )
 
 const (
+	// timestampFormat is the ISO-8601 layout the logging guide requires: yyyy-MM-dd'T'HH:mm:ss.SSSZ.
+	timestampFormat = "2006-01-02T15:04:05.000Z07:00"
+
 	TEXT  = "text"
 	JSON  = "json"
 	CLOUD = "cloud"
@@ -36,7 +42,7 @@ const (
 var (
 	logLevel       = logLevelFlag(log.DebugLevel)
 	logFile        = flag.String("log-path", "", "Redirect log output to file (stdout if empty)")
-	logFormat      = flag.String("log-format", TEXT, fmt.Sprintf("Log format : %v (default), %v or %v", TEXT, CLOUD, JSON))
+	logFormat      = flag.String("log-format", JSON, fmt.Sprintf("Log format : %v (default), %v or %v", JSON, CLOUD, TEXT))
 	logRotation    = flag.Bool("log-rotation", true, "Enabling log rotation")
 	logMaxSize     = flag.Int("log-max-size", 100, "Set max log size in Mb which triggers rotation")
 	logMaxBackups  = flag.Int("log-max-backups", 20, "Set max number of backups")
@@ -65,18 +71,26 @@ func init() {
 
 func ConfigureLog() {
 	log.SetLevel(log.Level(logLevel))
+	// The formatter is installed first, so that every line below already carries the
+	// configured layout, including the ones written while the log file is being set up.
+	setFormatter()
+	log.SetOutput(os.Stdout)
 	createDirForFile(*logFile)
 	if *logFile != "" {
 		lf, err := os.OpenFile(*logFile, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
 			log.
-				WithField("logFile", *logFile).
-				Fatal("unable to create or truncate log file")
+				WithField("log_file", *logFile).
+				WithError(err).
+				Fatal("Cannot open the log file")
 		}
 		if !*logRotation {
 			log.SetOutput(lf)
-			fmt.Printf("Log rotation disabled: logFile=%v\n", *logFile)
+			log.WithField("log_file", *logFile).Info("Log rotation is disabled")
 		} else {
+			if err := lf.Close(); err != nil {
+				log.WithError(err).Fatal("Cannot close the log file before enabling rotation")
+			}
 			log.SetOutput(&lumberjack.Logger{
 				Filename:   *logFile,
 				MaxSize:    *logMaxSize,
@@ -84,19 +98,81 @@ func ConfigureLog() {
 				MaxAge:     *logMaxAge,
 				Compress:   *logArchivation,
 			})
-			fmt.Printf("Log rotation enabled: logFile=%v, logMaxSize=%v MB, logMaxBackups=%v, logMaxAge=%v, logArchivation=%v, logLevel=%v\n", *logFile, *logMaxSize, *logMaxBackups, *logMaxAge, *logArchivation, logLevel)
+			log.WithFields(log.Fields{
+				"log_file":         *logFile,
+				"log_max_size_mb":  *logMaxSize,
+				"log_max_backups":  *logMaxBackups,
+				"log_max_age_days": *logMaxAge,
+				"log_archivation":  *logArchivation,
+				"log_level":        logLevel.String(),
+			}).Info("Log rotation is enabled")
 		}
-	}
-	switch *logFormat {
-	case JSON:
-		log.SetFormatter(&log.JSONFormatter{})
-	case CLOUD:
-		log.SetReportCaller(true)
-		log.SetFormatter(&CloudFormatter{})
 	}
 	log.RegisterExitHandler(func() {
 		log.Error("fatal error occurred, exit log-exporter")
 	})
+}
+
+func setFormatter() {
+	switch *logFormat {
+	case JSON:
+		// The caller feeds the class field, the JSON counterpart of the class marker
+		// that the cloud format prints.
+		log.SetReportCaller(true)
+		log.SetFormatter(&utcFormatter{&log.JSONFormatter{
+			TimestampFormat: timestampFormat,
+			FieldMap: log.FieldMap{
+				log.FieldKeyTime:  "time",
+				log.FieldKeyLevel: "level",
+				log.FieldKeyMsg:   "message",
+				log.FieldKeyFile:  "class",
+			},
+			CallerPrettyfier: func(frame *runtime.Frame) (string, string) {
+				// An empty function name drops the func key; only class is wanted.
+				return "", shortFileName(frame.File)
+			},
+		}})
+	case CLOUD:
+		log.SetReportCaller(true)
+		log.SetFormatter(&CloudFormatter{})
+	default:
+		log.SetReportCaller(false)
+		log.SetFormatter(&log.TextFormatter{})
+	}
+}
+
+// utcFormatter normalizes the entry clock to UTC, which the logging guide requires,
+// and then delegates the rendering to the wrapped formatter.
+type utcFormatter struct {
+	log.Formatter
+}
+
+func (f *utcFormatter) Format(entry *log.Entry) ([]byte, error) {
+	utcEntry := *entry
+	utcEntry.Time = entry.Time.UTC()
+	output, err := f.Formatter.Format(&utcEntry)
+	if err == nil {
+		return output, nil
+	}
+	// Prometheus values can contain NaN or infinity, which JSON cannot encode.
+	utcEntry.Data = make(log.Fields, len(entry.Data))
+	for key, value := range entry.Data {
+		if _, err := json.Marshal(value); err != nil {
+			value = fmt.Sprint(value)
+		}
+		utcEntry.Data[key] = value
+	}
+	return f.Formatter.Format(&utcEntry)
+}
+
+// shortFileName reduces a full source path to its base file name.
+func shortFileName(fullName string) string {
+	names := strings.Split(fullName, "/")
+	index := len(names) - 1
+	if index < 0 {
+		return ""
+	}
+	return names[index]
 }
 
 type CloudFormatter struct {
@@ -111,28 +187,43 @@ func (f *CloudFormatter) Format(entry *log.Entry) ([]byte, error) {
 	b.WriteString(entry.Level.String())
 	b.WriteString("] [x_request_id=0] [tenant_id=-] [thread=-] [class=")
 
-	var fullName, name string
+	var name string
 	if entry.Caller != nil {
-		fullName = entry.Caller.File
-		names := strings.Split(fullName, "/")
-		index := len(names) - 1
-		if index >= 0 {
-			name = names[index]
-		}
+		name = shortFileName(entry.Caller.File)
 	}
 	b.WriteString(name)
 	b.WriteString("] ")
-	errorCode := entry.Data[ec.FIELD]
-	if errorCode != nil {
-		b.WriteString("[")
-		b.WriteString(ec.FIELD)
-		b.WriteByte('=')
-		fmt.Fprintf(b, "%v", errorCode)
-		b.WriteString("] ")
+	// error_code keeps its leading position; every other structured field follows in a
+	// stable order, so that the cloud format carries the same data as the JSON format.
+	if errorCode := entry.Data[ec.FIELD]; errorCode != nil {
+		writeCloudField(b, ec.FIELD, errorCode)
 	}
-	b.WriteString(entry.Message)
+	keys := make([]string, 0, len(entry.Data))
+	for key := range entry.Data {
+		if key != ec.FIELD {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		writeCloudField(b, key, entry.Data[key])
+	}
+	b.WriteString(escapeCloudLine(entry.Message))
 	b.WriteByte('\n')
 	return b.Bytes(), nil
+}
+
+func writeCloudField(b *bytes.Buffer, key string, value interface{}) {
+	b.WriteByte('[')
+	b.WriteString(key)
+	b.WriteByte('=')
+	// A field value may span several lines; the text format keeps every entry on one line.
+	b.WriteString(escapeCloudLine(fmt.Sprint(value)))
+	b.WriteString("] ")
+}
+
+func escapeCloudLine(value string) string {
+	return strings.NewReplacer("\r", "\\r", "\n", "\\n").Replace(value)
 }
 
 func createDirForFile(filePath string) {
@@ -142,6 +233,6 @@ func createDirForFile(filePath string) {
 	}
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
-		fmt.Printf("Error creating directory %v : %+v", dir, err)
+		log.WithFields(log.Fields{"dir": dir, "error": err}).Error("Cannot create the log directory")
 	}
 }

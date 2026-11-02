@@ -25,17 +25,17 @@ import (
 )
 
 func (e *Evaluator) evaluateCountMetric(data [][]string, metric string, metricCfg *config.MetricsConfig) *MetricEvaluationResult {
-	log.Debugf("evaluateCountMetric %v", metric)
+	log.WithField("metric", metric).Debug("evaluateCountMetric")
 
 	if metricCfg.Type == "histogram" {
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v has count operation and doesn't support histogram type", metric)
+		log.WithField(ec.FIELD, ec.LME_8102).WithField("metric", metric).Error("Metric has count operation and doesn't support histogram type")
 		return nil
 	}
 	metricState := e.monState.Get(metric)
 	var metricSeriesMap map[string]*MetricSeries
 
 	if metricState == nil {
-		log.Warnf("MetricState is empty for %v", metric)
+		log.WithField("metric", metric).Warn("MetricState is empty")
 		metricState = CreateMetricState()
 		e.monState.Set(metric, metricState)
 	}
@@ -48,12 +48,12 @@ func (e *Evaluator) evaluateCountMetric(data [][]string, metric string, metricCf
 	}()
 
 	if dataSize == 0 {
-		log.Debugf("DataSize == 0 for metric %v", metric)
+		log.WithField("metric", metric).Debug("DataSize == 0")
 		return result
 	}
 
 	if len(metricCfg.Labels) == 0 {
-		log.Debugf("metricCfg.Labels == 0 for metric %v", metric)
+		log.WithField("metric", metric).Debug("metricCfg.Labels == 0")
 		ms := MetricSeries{}
 		ms.Average = float64(dataSize - 1)
 		ms.Sum = ms.Average
@@ -66,14 +66,14 @@ func (e *Evaluator) evaluateCountMetric(data [][]string, metric string, metricCf
 	}
 
 	metricSeriesMap = e.evaluateCountMetricSeriesMapByOLV(data, metric, metricCfg)
-	log.Debugf("metricSeriesMap = %+v for metric %v", metricSeriesMap, metric)
+	log.WithFields(log.Fields{"metric_series_map": metricSeriesMap, "metric": metric}).Debug("Evaluated the metric series map")
 
 	for olv, ms := range metricSeriesMap {
 		labels := metricState.Get(olv)
 		if labels == nil {
 			labels = generateLabelValueMapFromOLV(olv, metricCfg.Labels)
 			metricState.Set(olv, labels)
-			log.Debugf("Generate new metricstate values %v for metric %v", olv, metric)
+			log.WithFields(log.Fields{"olv": olv, "metric": metric}).Debug("Generate new metricstate values")
 		}
 		ms.Labels = labels
 		ms.Average = float64(ms.Count)
@@ -85,17 +85,17 @@ func (e *Evaluator) evaluateCountMetric(data [][]string, metric string, metricCf
 }
 
 func (e *Evaluator) evaluateCountMetricSeriesMapByOLV(data [][]string, metric string, metricCfg *config.MetricsConfig) map[string]*MetricSeries {
-	log.Debugf("evaluateCountMetricSeriesMapByOLV for metric %v", metric)
+	log.WithField("metric", metric).Debug("evaluateCountMetricSeriesMapByOLV")
 	dataSize := len(data)
 	if dataSize < 2 {
-		log.Debugf("DataSize == %v for metric %v, evaluation result is empty", dataSize, metric)
+		log.WithFields(log.Fields{"data_size": dataSize, "metric": metric}).Debug("Evaluation result is empty")
 		return make(map[string]*MetricSeries)
 	}
 
 	heading := data[0]
 	labelIndexes, err := evaluateLabelSourceFieldIndexes(metricCfg, heading)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_1020).Errorf("Can not evaluate count metric %v : %+v", metric, err)
+		log.WithField(ec.FIELD, ec.LME_1020).WithFields(log.Fields{"metric": metric, "error": err}).Error("Can not evaluate count metric")
 		return make(map[string]*MetricSeries)
 	}
 	var idFieldIndex = -1
@@ -109,7 +109,7 @@ func (e *Evaluator) evaluateCountMetricSeriesMapByOLV(data [][]string, metric st
 	if metricCfg.Cond != nil {
 		meCondition = CreateMECondition(metric, metricCfg.Cond, heading)
 	}
-	log.Debugf("labelIndexes = %+v; heading = %v; idFieldIndex = %v for metric %v", labelIndexes, heading, idFieldIndex, metric)
+	log.WithFields(log.Fields{"label_indexes": labelIndexes, "heading": heading, "id_field_index": idFieldIndex, "metric": metric}).Debug("Evaluated the label indexes")
 
 	threadsNumber := metricCfg.Threads
 	if threadsNumber > dataSize-1 {
@@ -144,11 +144,11 @@ func (e *Evaluator) evaluateCountMetricSeriesMapByOLV(data [][]string, metric st
 			resultMetricSeries := result[olv]
 			if resultMetricSeries == nil {
 				result[olv] = metricSeries
-				//log.Debugf("!!! For olv %v result[olv] was null, creating new one: %+v", olv, metricSeries)
+				//log.WithFields(log.Fields{"olv": olv, "metric_series": metricSeries}).Debug("!!! result[olv] was null, creating new one")
 			} else {
-				//log.Debugf("@@@ For olv %v result[olv] was not null, old one: %+v, add : %+v", olv, resultMetricSeries, metricSeries)
+				//log.WithFields(log.Fields{"olv": olv, "result_metric_series": resultMetricSeries, "metric_series": metricSeries}).Debug("@@@ result[olv] was not null, adding to the old one")
 				resultMetricSeries.Count += metricSeries.Count
-				//log.Debugf("### For olv %v sum result : %+v", olv, resultMetricSeries)
+				//log.WithFields(log.Fields{"olv": olv, "result_metric_series": resultMetricSeries}).Debug("### Sum result")
 			}
 		}
 	}
@@ -163,11 +163,11 @@ const (
 )
 
 func (e *Evaluator) evaluateCountMetricSeriesMapByOLVTask(data [][]string, metric string, metricCfg *config.MetricsConfig, labelIndexes []int, idFieldIndex int, meCondition *MECondition, start int, end int) map[string]*MetricSeries {
-	log.Debugf("evaluateCountMetricSeriesMapByOLVTask for metric %v ; start = %v , end = %v", metric, start, end)
+	log.WithFields(log.Fields{"metric": metric, "start": start, "end": end}).Debug("evaluateCountMetricSeriesMapByOLVTask")
 	result := make(map[string]*MetricSeries)
 
 	if start >= end {
-		log.Debugf("start >= end for metric %v; start = %v, end = %v", metric, start, end)
+		log.WithFields(log.Fields{"metric": metric, "start": start, "end": end}).Debug("start >= end")
 		return result
 	}
 
@@ -188,12 +188,12 @@ func (e *Evaluator) evaluateCountMetricSeriesMapByOLVTask(data [][]string, metri
 	if multiValueFieldsEnabled {
 		multiValueFieldsIndexes, err = evaluateMultiValueFieldIndexes(metricCfg, data[0])
 		if err != nil {
-			log.WithField(ec.FIELD, ec.LME_1020).Errorf("Can not evaluate count metric %v : %+v", metric, err)
+			log.WithField(ec.FIELD, ec.LME_1020).WithFields(log.Fields{"metric": metric, "error": err}).Error("Can not evaluate count metric")
 			return result
 		}
 	}
 
-	log.Debugf("For metric %v : uniqIdStrategy = %v, multiValueFieldsEnabled = %v, multiValueFieldsIndexes = %+v", metric, uniqIdStrategy, multiValueFieldsEnabled, multiValueFieldsIndexes)
+	log.WithFields(log.Fields{"metric": metric, "uniq_id_strategy": uniqIdStrategy, "multi_value_fields_enabled": multiValueFieldsEnabled, "multi_value_fields_indexes": multiValueFieldsIndexes}).Debug("Count metric task configuration")
 
 	for i := start; i < end; i++ {
 		if meCondition != nil && !meCondition.Apply(data[i]) {
@@ -201,21 +201,21 @@ func (e *Evaluator) evaluateCountMetricSeriesMapByOLVTask(data [][]string, metri
 		}
 		if uniqIdStrategy == UNIQ_ID_STRATEGY_METRIC {
 			if cache.IsUsed(data[i][idFieldIndex]) {
-				log.Tracef("For metric %v id field %v is used. Skipping metric update", metric, data[i][idFieldIndex])
+				log.WithFields(log.Fields{"metric": metric, "id_field_value": data[i][idFieldIndex]}).Trace("Id field is used. Skipping metric update")
 				continue
 			} else {
-				log.Tracef("For metric %v id field %v is not used yet. Updating the metric", metric, data[i][idFieldIndex])
+				log.WithFields(log.Fields{"metric": metric, "id_field_value": data[i][idFieldIndex]}).Trace("Id field is not used yet. Updating the metric")
 			}
 		}
 		if !multiValueFieldsEnabled {
 			olv := generateOrderedLabelValuesString(labelIndexes, data[i])
-			log.Tracef("For metric %v , olv = %v", metric, olv)
+			log.WithFields(log.Fields{"metric": metric, "olv": olv}).Trace("Generated the ordered label values")
 			if uniqIdStrategy == UNIQ_ID_STRATEGY_LABEL {
 				if cache.IsUsedForOLV(data[i][idFieldIndex], olv) {
-					log.Tracef("For metric %v id field %v for olv %v is used. Skipping metric update", metric, data[i][idFieldIndex], olv)
+					log.WithFields(log.Fields{"metric": metric, "id_field_value": data[i][idFieldIndex], "olv": olv}).Trace("Id field for the olv is used. Skipping metric update")
 					continue
 				} else {
-					log.Tracef("For metric %v id field %v for olv %v is not used yet. Updating the metric", metric, data[i][idFieldIndex], olv)
+					log.WithFields(log.Fields{"metric": metric, "id_field_value": data[i][idFieldIndex], "olv": olv}).Trace("Id field for the olv is not used yet. Updating the metric")
 				}
 			}
 			ms := result[olv]
@@ -226,14 +226,14 @@ func (e *Evaluator) evaluateCountMetricSeriesMapByOLVTask(data [][]string, metri
 			ms.Count++
 		} else {
 			olvs := generateOrderedLabelValuesStringList(labelIndexes, data[i], metricCfg, multiValueFieldsIndexes)
-			log.Tracef("For metric %v , olvs = %v", metric, olvs)
+			log.WithFields(log.Fields{"metric": metric, "olvs": olvs}).Trace("Generated the ordered label values list")
 			for _, olv := range olvs {
 				if uniqIdStrategy == UNIQ_ID_STRATEGY_LABEL {
 					if cache.IsUsedForOLV(data[i][idFieldIndex], olv) {
-						log.Tracef("For metric %v id field %v for olv %v is used. Skipping metric update", metric, data[i][idFieldIndex], olv)
+						log.WithFields(log.Fields{"metric": metric, "id_field_value": data[i][idFieldIndex], "olv": olv}).Trace("Id field for the olv is used. Skipping metric update")
 						continue
 					} else {
-						log.Tracef("For metric %v id field %v for olv %v is not used yet. Updating the metric", metric, data[i][idFieldIndex], olv)
+						log.WithFields(log.Fields{"metric": metric, "id_field_value": data[i][idFieldIndex], "olv": olv}).Trace("Id field for the olv is not used yet. Updating the metric")
 					}
 				}
 				ms := result[olv]

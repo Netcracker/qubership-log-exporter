@@ -44,7 +44,7 @@ func NewDERegistry(appConfig *config.Config) *DERegistry {
 func (der *DERegistry) MustRegister(queryName string, collector prometheus.Collector) {
 	reg := der.registries[queryName]
 	if reg == nil {
-		log.WithField(ec.FIELD, ec.LME_1604).Errorf("Can not register metric for query %v : registry does not exist", queryName)
+		log.WithField(ec.FIELD, ec.LME_1604).WithField("query", queryName).Error("Can not register metric : registry does not exist")
 		return
 	}
 	reg.MustRegister(collector)
@@ -61,7 +61,7 @@ func (der *DERegistry) Gather() ([]*dto.MetricFamily, error) {
 		}
 		result = append(result, gathered...)
 	}
-	log.Tracef("DERegistry : gather performed : %+v", result)
+	log.WithField("result", result).Trace("DERegistry : gather performed")
 	return result, nil
 }
 

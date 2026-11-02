@@ -54,7 +54,7 @@ func (smsp *SelfMonSchedulerProcessor) Start() {
 		}
 	})
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_1608).Errorf("SelfMonSchedulerProcessor : Error registering in croniter : %v", err)
+		log.WithField(ec.FIELD, ec.LME_1608).WithField("error", err).Error("SelfMonSchedulerProcessor : Error registering in croniter")
 		return
 	}
 	log.Info("SelfMonSchedulerProcessor.Start() finished")

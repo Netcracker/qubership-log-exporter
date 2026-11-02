@@ -44,7 +44,7 @@ func CreateEvaluator(appConfig *config.Config) *Evaluator {
 		if len(metricCfg.ExpectedLabels) > 0 {
 			for itemNum, expectedLabelsItem := range metricCfg.ExpectedLabels {
 				cartesian := utils.LabelsCartesian(expectedLabelsItem)
-				log.Infof("For metric %v (itemNum %v) expected labels cartesian generated : %+v", metric, itemNum, cartesian)
+				log.WithFields(log.Fields{"metric": metric, "item_num": itemNum, "cartesian": cartesian}).Info("Expected labels cartesian generated")
 				for _, labels := range cartesian {
 					metricState.Set(utils.MapToString(labels), labels)
 				}
@@ -69,7 +69,7 @@ func (e *Evaluator) EvaluateMetric(data [][]string, metric string, metricCfg *co
 	}()
 
 	if metricCfg == nil {
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v is not defined in metrics section, the metric can not be evaluated", metric)
+		log.WithField(ec.FIELD, ec.LME_8102).WithField("metric", metric).Error("The metric is not defined in the metrics section, it cannot be evaluated")
 		return nil
 	}
 
@@ -82,10 +82,10 @@ func (e *Evaluator) EvaluateMetric(data [][]string, metric string, metricCfg *co
 	case "value":
 		result = e.evaluateValueMetric(data, metric, metricCfg)
 	case "duration-no-response":
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v has duration-no-response operation, which can be evaluated only as a child of the other duration metric", metric)
+		log.WithField(ec.FIELD, ec.LME_8102).WithField("metric", metric).Error("The metric has a duration-no-response operation, which can be evaluated only as a child of another duration metric")
 		return nil
 	default:
-		log.WithField(ec.FIELD, ec.LME_8102).Errorf("Metric %v has not supported operation %v", metric, metricCfg.Operation)
+		log.WithField(ec.FIELD, ec.LME_8102).WithFields(log.Fields{"metric": metric, "operation": metricCfg.Operation}).Error("The metric has an unsupported operation")
 		return nil
 	}
 
@@ -108,10 +108,10 @@ func (e *Evaluator) EvaluateMetric(data [][]string, metric string, metricCfg *co
 
 func (e *Evaluator) performMetricPostEvaluationSteps(result *MetricEvaluationResult, metricState *MetricState, metricSeriesMap map[string]*MetricSeries, metric string, metricCfg *config.MetricsConfig) *MetricEvaluationResult {
 	if metricCfg.Type == "gauge" {
-		log.Debugf("Appending NaN values for metric %v", metric)
+		log.WithField("metric", metric).Debug("Appending NaN values")
 		result = e.appendNaNForGauges(result, metricState, metricSeriesMap, metric)
 	} else if !*utils.DisableTimestamp {
-		log.Debugf("Appending zero values for metric %v", metric)
+		log.WithField("metric", metric).Debug("Appending zero values")
 		result = appendZeroValuesForNotUpdatedCounters(result, metricState, metricSeriesMap, metricCfg)
 	}
 	return result
@@ -152,9 +152,9 @@ func appendZeroValuesForNotUpdatedCounters(result *MetricEvaluationResult, metri
 }
 
 func logMetricEvaluationResult(metric string, result *MetricEvaluationResult) {
-	log.Debugf("For metric %v result is evaluated (len = %v)", metric, len(result.Series))
+	log.WithFields(log.Fields{"metric": metric, "series_len": len(result.Series)}).Debug("Result evaluated")
 	for i, ms := range result.Series {
-		log.Tracef("%d : %+v : sum = %v, cnt = %v, avg = %v , hist = %+v, timestamp = %+v", i, ms.Labels, ms.Sum, ms.Count, ms.Average, ms.HistValue, ms.Timestamp)
+		log.WithFields(log.Fields{"index": i, "labels": ms.Labels, "sum": ms.Sum, "cnt": ms.Count, "avg": ms.Average, "hist": ms.HistValue, "timestamp": ms.Timestamp}).Trace("Evaluated metric series")
 	}
 }
 
@@ -194,7 +194,7 @@ func generateLabelValueMapFromOLV(olv string, labels []string) map[string]string
 	result := make(map[string]string, len(labels))
 
 	if len(labelValues) != len(labels) {
-		log.WithField(ec.FIELD, ec.LME_1020).Errorf("Error generateLabelValueMapFromOLV %d != %d: labels : %+v ; labelValues : %+v", len(labels), len(labelValues), labels, labelValues)
+		log.WithField(ec.FIELD, ec.LME_1020).WithFields(log.Fields{"labels_len": len(labels), "label_values_len": len(labelValues), "labels": labels, "label_values": labelValues}).Error("generateLabelValueMapFromOLV : the label and label value counts differ")
 	}
 
 	for i, label := range labels {

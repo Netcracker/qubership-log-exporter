@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"log_exporter/internal/config"
-	"log_exporter/internal/utils"
 	ec "log_exporter/internal/utils/errorcodes"
 	"net"
 	"net/http"
@@ -60,7 +59,7 @@ func (g *LokiService) Query(qName string, startTime time.Time, endTime time.Time
 	now := time.Now()
 	var err error
 	defer func() {
-		log.Debugf("LokiService : For query %v request executed and json is processed in %+v", qName, time.Since(now))
+		log.WithFields(log.Fields{"query": qName, "duration": time.Since(now)}).Debug("LokiService : Request executed and json processed")
 		if err != nil {
 			selfMonitorIncErrorCodeCount(qName, now)
 		} else {
@@ -108,45 +107,40 @@ func (g *LokiService) queryLoki(qName string, startTime time.Time, endTime time.
 	q.Add("end", endTime.Format(time.RFC3339))
 	req.URL.RawQuery = q.Encode()
 
-	log.Debugf("LokiService : For query %v request generated : %+v", qName, req.URL.String())
-
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", ec.LME_7100, fmt.Errorf("LokiService : For query %v error acessing %v : %+v", qName, lokiEndpoint, err)
+		return "", ec.LME_7100, fmt.Errorf("LokiService : For query %v error accessing %v : %+v", qName, lokiEndpoint, err)
 	}
 
 	if resp.Body != nil {
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
-				log.Errorf("LokiService : Error closing response body : %+v", err)
+				log.WithField("error", err).Error("LokiService : Error closing response body")
 			}
 		}()
 	}
 
-	log.Debugf("LokiService : For query %v received response : %+v", qName, resp)
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", ec.LME_7100, fmt.Errorf("LokiService : For query %v to %v error reading body : %+v", qName, lokiEndpoint, err)
 	}
 	result := string(body)
-	log.Infof("LokiService : For query %v to %v response status is %v, body length is %v", qName, lokiEndpoint, resp.Status, len(result))
+	log.WithFields(log.Fields{"query": qName, "loki_endpoint": lokiEndpoint, "status": resp.Status, "body_bytes": len(result), "status_code": resp.StatusCode}).Info("LokiService : Received response from loki")
 	if resp.StatusCode != 200 {
-		log.WithField(ec.FIELD, ec.LME_7102).Errorf("LokiService : For query %v received response with status code %v from loki, response body (limited) : %v", qName, resp.StatusCode, utils.GetLimitedPrefix(result, 10000))
+		log.WithField(ec.FIELD, ec.LME_7102).WithFields(log.Fields{"query": qName, "status_code": resp.StatusCode}).Error("LokiService : Received response with an error status code from loki")
 		if resp.StatusCode >= 400 {
 			return "", ec.LME_7101, fmt.Errorf("LokiService : For query %v status code is %v", qName, resp.StatusCode)
 		}
 	}
-	log.Debugf("LokiService : For query %v received response body : %v", qName, result)
 
 	return result, "", nil
 }
 
 func (g *LokiService) processJson(stringData string, qName string) ([][]string, string, error) {
-	log.Debugf("LokiService : Json processing : For query %v lokiResponse = %v", qName, stringData)
 	var lokiResponse LokiResponse
 	err := json.Unmarshal([]byte(stringData), &lokiResponse)
 	if err != nil {
-		log.WithField(ec.FIELD, ec.LME_7143).Errorf("LokiService : Unmarshalling error for query %v : %+v", qName, err)
+		log.WithField(ec.FIELD, ec.LME_7143).WithFields(log.Fields{"query": qName, "error": err}).Error("LokiService : Unmarshalling error")
 		return nil, ec.LME_7143, fmt.Errorf("LokiService : Unmarshalling error for query %v : %+v", qName, err)
 	}
 	if len(lokiResponse.Data.Result) == 0 {
@@ -177,7 +171,7 @@ func (g *LokiService) processJson(stringData string, qName string) ([][]string, 
 		}
 		totalLen += len(result.Values)
 	}
-	log.Debugf("LokiService : Json processing : For query %v keyList = %+v, keyListSet = %+v, totalLen = %v", qName, keyList, keyListSet, totalLen)
+	log.WithFields(log.Fields{"query": qName, "key_list": keyList, "key_list_set": keyListSet, "total_len": totalLen}).Debug("LokiService : Json processing : Key list is built")
 
 	records := make([][]string, 0, totalLen+1)
 	records = append(records, keyList)
@@ -189,7 +183,7 @@ func (g *LokiService) processJson(stringData string, qName string) ([][]string, 
 		for k, v := range labelsMap {
 			index, ok := keyListSet[k]
 			if !ok {
-				log.WithField(ec.FIELD, ec.LME_7143).Errorf("LokiService : Json processing : For query %v can not find index for key %v in keyListSet %+v for labelsMap %+v, which is completely unexpected!", qName, k, keyListSet, labelsMap)
+				log.WithField(ec.FIELD, ec.LME_7143).WithFields(log.Fields{"query": qName, "key": k, "key_list_set": keyListSet, "labels_map": labelsMap}).Error("LokiService : Json processing : Can not find an index for the key in keyListSet, which is completely unexpected")
 			}
 			rowTemplate[index] = v
 		}
@@ -203,8 +197,6 @@ func (g *LokiService) processJson(stringData string, qName string) ([][]string, 
 			records = append(records, row)
 		}
 	}
-
-	log.Debugf("LokiService : Json processing : For query %v result len = %v, result records = %+v", qName, len(records), records)
 
 	return records, "", nil
 }

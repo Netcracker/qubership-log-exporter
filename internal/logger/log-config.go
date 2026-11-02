@@ -70,10 +70,8 @@ func init() {
 }
 
 func ConfigureLog() {
-	log.SetLevel(log.Level(logLevel))
-	// The formatter is installed first, so that every line below already carries the
-	// configured layout, including the ones written while the log file is being set up.
-	setFormatter()
+	// Configure the formatter before logging any output setup failures.
+	ConfigureLevelAndFormat()
 	log.SetOutput(os.Stdout)
 	createDirForFile(*logFile)
 	if *logFile != "" {
@@ -111,6 +109,12 @@ func ConfigureLog() {
 	log.RegisterExitHandler(func() {
 		log.Error("fatal error occurred, exit log-exporter")
 	})
+}
+
+// ConfigureLevelAndFormat applies the parsed logging flags without changing the output destination.
+func ConfigureLevelAndFormat() {
+	log.SetLevel(log.Level(logLevel))
+	setFormatter()
 }
 
 func setFormatter() {

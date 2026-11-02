@@ -56,6 +56,8 @@ Quotes and line breaks are escaped, so a multiline message or stack trace stays 
 Set `-log-format=text` to use the standard Logrus text format, or `-log-format=cloud` for the legacy cloud layout.
 The cloud layout includes structured fields in sorted order after `error_code` and escapes message and field line breaks.
 Logs go to stdout unless `-log-path` redirects them to a file.
+YAML `flags.log-format` and `flags.log-level` override the command-line settings after the configuration loads.
+Startup records before that point use the command-line settings or their defaults.
 The `-version` and `-help` commands print plain text.
 If your log collector parses text records, set `-log-format=text` or Helm value `LME_LOG_FORMAT: text` before upgrading.
 

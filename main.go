@@ -227,4 +227,5 @@ func reapplyFlags() {
 			}
 		}
 	}
+	logger.ConfigureLevelAndFormat()
 }

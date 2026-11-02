@@ -15,11 +15,67 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"flag"
+	"log_exporter/internal/config"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 )
+
+func TestYAMLLoggingFlagsChangeTheActiveLogger(t *testing.T) {
+	previousConfig := appConfig
+	previousFormat := flag.Lookup("log-format").Value.String()
+	previousLevel := flag.Lookup("log-level").Value.String()
+	previousOutput, previousFormatter, previousLogLevel := log.StandardLogger().Out, log.StandardLogger().Formatter, log.GetLevel()
+	previousCaller := log.StandardLogger().ReportCaller
+	t.Cleanup(func() {
+		appConfig = previousConfig
+		_ = flag.Set("log-format", previousFormat)
+		_ = flag.Set("log-level", previousLevel)
+		log.SetOutput(previousOutput)
+		log.SetFormatter(previousFormatter)
+		log.SetLevel(previousLogLevel)
+		log.SetReportCaller(previousCaller)
+	})
+	for _, format := range []string{"cloud", "text", "json"} {
+		t.Run(format, func(t *testing.T) {
+			var output bytes.Buffer
+			log.SetOutput(&output)
+			log.SetFormatter(&log.JSONFormatter{})
+			log.SetLevel(log.DebugLevel)
+			appConfig = &config.Config{Flags: map[string]string{"log-format": format, "log-level": "error"}}
+			reapplyFlags()
+			output.Reset()
+			log.Info("hidden message")
+			log.Error("visible message")
+			if strings.Contains(output.String(), "hidden message") {
+				t.Errorf("log-level=error emitted INFO: %s", output.String())
+			}
+			if !strings.Contains(output.String(), "visible message") {
+				t.Errorf("log-level=error suppressed ERROR: %s", output.String())
+			}
+			switch format {
+			case "json":
+				if !json.Valid(output.Bytes()) {
+					t.Errorf("log-format=json emitted invalid JSON: %s", output.String())
+				}
+			case "cloud":
+				if !strings.HasPrefix(output.String(), "[") {
+					t.Errorf("log-format=cloud emitted %q", output.String())
+				}
+			case "text":
+				if !strings.Contains(output.String(), "level=error") || json.Valid(output.Bytes()) {
+					t.Errorf("log-format=text emitted %q", output.String())
+				}
+			}
+		})
+	}
+}
 
 func TestCheckConfigReturnsFailureForInvalidConfiguration(t *testing.T) {
 	malformed := filepath.Join(t.TempDir(), "malformed.yaml")

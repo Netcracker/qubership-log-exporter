@@ -382,7 +382,8 @@ func performMetricsNonBlockingChecks(config *Config) {
 }
 
 func performQueriesNonBlockingChecks(config *Config) {
-	isNewRelic := config.Datasources[config.DsName].Type == "newrelic"
+	datasource := config.Datasources[config.DsName]
+	isNewRelic := datasource != nil && datasource.Type == "newrelic"
 	parser := utils.GetCronParser()
 	pushExport := getPushExport(config)
 	for queryName, queryConfig := range config.Queries {

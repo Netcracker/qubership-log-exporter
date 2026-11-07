@@ -93,3 +93,13 @@ func TestExampleConfigs(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateConfigRejectsEmptyDatasource(t *testing.T) {
+	config := &Config{
+		Datasources: map[string]*DatasourceConfig{"empty": nil},
+		DsName:      "empty",
+	}
+	if err := ValidateConfig(config); err == nil {
+		t.Fatal("ValidateConfig accepted an empty datasource")
+	}
+}
